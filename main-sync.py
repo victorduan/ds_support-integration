@@ -7,6 +7,7 @@ import json
 import string
 import beatbox
 import time
+import mysql.connector
 from zendesk import Zendesk
 
 if config.logLevel == "info":
@@ -24,18 +25,25 @@ def QuerySfdc(query):
 	sf_api_token = config.sfApiToken
 
 	try:
+		logging.info("Logging into Salesforce")
 		login = svc.login(sf_username, sf_password + sf_api_token)
 
 	except Exception, err:
 		print err
+		logging.error("Problem logging into Salesforce: " + str(err))
+		logging.error("Exiting...")
 		sys.exit()
 
 	print "Login successful ("+ str(login) +")." #DEBUG
+	logging.debug("Login successful ("+ str(login) +").")
 
 	results = []
 
+	logging.debug("Running Salesforce Query: " + str(query))
 	qr = svc.query(query)
+
 	print "Result size: " + str(qr['size'])
+	logging.info("Salesforce Query Result Count: " + str(qr['size']))
 
 	# Check to see if any work needs to be done by checking result size
 	if qr['size']:
@@ -43,6 +51,7 @@ def QuerySfdc(query):
 	else:
 		queryComplete = 'true'
 		print "Nothing to do."
+		logging.info("No Salesforce data, moving on")
 
 	# Process results and query more, if necessary
 	while queryComplete == 'false':
@@ -56,6 +65,78 @@ def QuerySfdc(query):
 
 	return results
 
+def GetSfdcTimestamp():
+	# SFDC Variables
+	sf = beatbox._tPartnerNS
+	svc = beatbox.PythonClient()
+	beatbox.gzipRequest=False
+	sf_username = config.sfUser
+	sf_password = config.sfPass
+	sf_api_token = config.sfApiToken
+
+	try:
+		logging.info("Logging into Salesforce")
+		svc.login(sf_username, sf_password + sf_api_token)
+
+	except Exception, err:
+		print err
+		logging.error("Problem logging into Salesforce: " + str(err))
+		logging.error("Exiting...")
+		sys.exit()
+
+	return svc.getServerTimestamp()
+
+def PullJobTimeStamp(jobName):
+	try: 
+		# Open MySQL Connection
+		cnx = mysql.connector.connect(user=config.mysql_username,
+		                              host=config.mysql_host,
+		                              database=config.mysql_database,
+		                              password='94105data')
+
+		# Find the last time from the database - to use as a start time for SFDC pull
+		timeCursor = cnx.cursor()
+		timeQuery = ("SELECT jobvalue FROM sfdc_jobs WHERE jobname = %s")
+		timeCursor.execute(timeQuery, (jobName, ))
+		for (jobvalue) in timeCursor:
+			start_time = jobvalue
+
+		#print start_time[0]
+
+	except Exception, err:
+		logging.exception("Exception in: " + str(sys.argv[0]))
+		logging.exception("Could not fetch timestamp for " + str(jobName))
+		sys.exit()
+
+	cnx.commit()
+	timeCursor.close()
+	cnx.close()
+
+	return start_time[0]
+
+def UpdateJobTimeStamp(jobName, timestamp):
+	try: 
+		# Open MySQL Connection
+		cnx = mysql.connector.connect(user=config.mysql_username,
+		                              host=config.mysql_host,
+		                              database=config.mysql_database,
+		                              password='94105data')
+
+		# Find the last time from the database - to use as a start time for SFDC pull
+		timeCursor = cnx.cursor()
+		storeTime = ("UPDATE sfdc_jobs SET last_run=now(), jobvalue=%s WHERE jobname=%s")
+		timeCursor.execute(storeTime, (timestamp, jobName))
+
+
+	except Exception, err:
+		logging.exception("Exception in: " + str(sys.argv[0]))
+		logging.exception("Could not update timestamp for " + str(jobName))
+		sys.exit()
+
+	cnx.commit()
+	timeCursor.close()
+	cnx.close()
+
 def PullSfdcAccounts(lastModifiedDate='2012-01-01T00:00:00.000Z'):
 
 	query = "SELECT Id, Name, Subscription_Plan__c, Support_Package__c, Zendesk__Domain_Mapping__c, Account_Owner_Name__c, Named_Support_Engineer__c, Technical_Account_Manager__r.Name FROM Account WHERE LastModifiedDate > " + lastModifiedDate
@@ -64,55 +145,55 @@ def PullSfdcAccounts(lastModifiedDate='2012-01-01T00:00:00.000Z'):
 
 	results = QuerySfdc(query)
 	for record in results:
-			# SAMPLE RECORD
-			#	{
-			#		'Name': 'Unified Social', 
-			#		'Named_Support_Engineer__c': '', 
-			#		'Technical_Account_Manager__r': 
-			#			{
-			#				'type': 'User', 
-			#				'Id': '', 
-			#				'Name': 'Steve Lee'
-			#			}, 
-			#		'Subscription_Plan__c': 'Bronze', 
-			#		'Zendesk__Domain_Mapping__c' : '',
-			#		'Support_Package__c': 'Standard', 
-			#		'type': 'Account', 
-			#		'Id': '0013000001AAZTKAA5', 
-			#		'Account_Owner_Name__c': 'John Novak'
-			#	}
-			try:
-				tam = "tam:" + record['Technical_Account_Manager__r']['Name'].replace(" ", "_").strip()
-			except:
-				tam = ''
+		# SAMPLE RECORD
+		#	{
+		#		'Name': 'Unified Social', 
+		#		'Named_Support_Engineer__c': '', 
+		#		'Technical_Account_Manager__r': 
+		#			{
+		#				'type': 'User', 
+		#				'Id': '', 
+		#				'Name': 'Steve Lee'
+		#			}, 
+		#		'Subscription_Plan__c': 'Bronze', 
+		#		'Zendesk__Domain_Mapping__c' : '',
+		#		'Support_Package__c': 'Standard', 
+		#		'type': 'Account', 
+		#		'Id': '0013000001AAZTKAA5', 
+		#		'Account_Owner_Name__c': 'John Novak'
+		#	}
+		try:
+			tam = "tam:" + record['Technical_Account_Manager__r']['Name'].replace(" ", "_").strip()
+		except:
+			tam = ''
 
-			if record['Account_Owner_Name__c'] != '':
-				ao = "ao:" + record['Account_Owner_Name__c'].replace(" ", "_").strip()
-			else:
-				ao = ''
+		if record['Account_Owner_Name__c'] != '':
+			ao = "ao:" + record['Account_Owner_Name__c'].replace(" ", "_").strip()
+		else:
+			ao = ''
 
-			if record['Named_Support_Engineer__c'] != '':
-				nse = "nse:" + record['Named_Support_Engineer__c'].replace(" ", "_").strip()
-			else:
-				nse = ''
+		if record['Named_Support_Engineer__c'] != '':
+			nse = "nse:" + record['Named_Support_Engineer__c'].replace(" ", "_").strip()
+		else:
+			nse = ''
 
-			if record['Zendesk__Domain_Mapping__c'] != '':
-				domains = string.split(record['Zendesk__Domain_Mapping__c'])
-			else:
-				domains = []
+		if record['Zendesk__Domain_Mapping__c'] != '':
+			domains = string.split(record['Zendesk__Domain_Mapping__c'])
+		else:
+			domains = []
 
-			processedResults.append(
-				{
-					'Name': record['Name'],
-					'NSE' : nse,
-					'TAM' : tam,
-					'Subscription' : record['Subscription_Plan__c'],
-					'SupportPackage' : record['Support_Package__c'],
-					'AccountId' : record['Id'],
-					'DomainMapping' : domains,
-					'AccountOwner' : ao
-				}
-			)
+		processedResults.append(
+			{
+				'Name': record['Name'],
+				'NSE' : nse,
+				'TAM' : tam,
+				'Subscription' : record['Subscription_Plan__c'],
+				'SupportPackage' : record['Support_Package__c'],
+				'AccountId' : record['Id'],
+				'DomainMapping' : domains,
+				'AccountOwner' : ao
+			}
+		)
 	return processedResults
 
 def UpsertZendeskOrgs(zendesk_conn, zendeskOrgs, sfdcAccounts):
@@ -147,6 +228,7 @@ def UpsertZendeskOrgs(zendesk_conn, zendeskOrgs, sfdcAccounts):
 	zendeskExtId = {} # SFDC-based key
 	zendeskString = {} # Zendesk-ID based key to store string
 	apiCalls = 0
+	errorCount = 0
 
 	for org in zendeskOrgs:
 		if org['external_id'] is not None:
@@ -178,7 +260,7 @@ def UpsertZendeskOrgs(zendesk_conn, zendeskOrgs, sfdcAccounts):
 			sfdc = account['Name'] + "_" + account['AccountId'] + "_" + str(group) + "_" + "_".join(sorted(account['DomainMapping'])) + "_" + "_".join(sorted(tags))
 			data = {
 				"organization": {
-						'name' : account['Name'],
+						'name' : account['Name'].decode('utf-8'),
 						'shared_comments' : True,
 						'shared_tickets' : True,
 						'domain_names' : account['DomainMapping'],
@@ -195,19 +277,25 @@ def UpsertZendeskOrgs(zendesk_conn, zendeskOrgs, sfdcAccounts):
 			
 			try:
 				#print "Before: " + str(data) # Before
-				if sfdc != zendeskString[zendeskExtId[account['AccountId']]]:
+				if sfdc != zendeskString[zendeskExtId[account['AccountId']]].encode('utf-8'):
 					print "SFDC: " + sfdc
 					print "ZenD: " + zendeskString[zendeskExtId[account['AccountId']]]
 					result = zendesk_conn.update_organization(organization_id=zendeskExtId[account['AccountId']], data=data)
 					apiCalls+=1
 					print "After: " + str(result) # After
+					logging.debug("Zendesk Update: " + str(result))
 			except Exception, err:
 				print "Zendesk Update Organization Error for ID " + str(zendeskExtId[account['AccountId']]) + " : " +  str(err)
+				print err
+				print data['organization']['name']
+				logging.warning("Zendesk Update Organization Error for ID " + str(zendeskExtId[account['AccountId']]) + " : " +  str(err))
+				logging.warning("Data: " + str(data))
+				errorCount+=1
 		### SECOND - Try to match by organization name ###
 		elif account['Name'] in zendeskName:
 			data = {
 				"organization": {
-						'name' : account['Name'],
+						'name' : account['Name'].decode('utf-8'),
 						'shared_comments' : True,
 						'shared_tickets' : True,
 						'domain_names' : account['DomainMapping'],
@@ -227,13 +315,17 @@ def UpsertZendeskOrgs(zendesk_conn, zendeskOrgs, sfdcAccounts):
 				apiCalls+=1
 				print "After: " + str(result) # After
 			except Exception, err:
-				print "Zendesk Update Organization Error for ID " + str(zendeskName[account['Name']]) + " : " +  str(err)
+				print "Zendesk Update Organization Error for Name " + str(zendeskName[account['Name']]) + " : " +  str(err)
+				print data['organization']['name']
+				logging.warning("Zendesk Update Organization Error for Name " + str(zendeskName[account['Name']]) + " : " +  str(err))
+				logging.warning("Data: " + str(data))
+				errorCount+=1
 		### THIRD - Try to create the organization in Zendesk ###
 		else:
 			#print "Need to create org: " + str(account['Name'])
 			data = {
 				"organization": {
-						'name' : account['Name'],
+						'name' : account['Name'].decode('utf-8'),
 						'shared_comments' : True,
 						'shared_tickets' : True,
 						'domain_names' : account['DomainMapping'],
@@ -255,10 +347,16 @@ def UpsertZendeskOrgs(zendesk_conn, zendeskOrgs, sfdcAccounts):
 			except Exception, err:
 				print "Zendesk Create Organization Error: " + str(account['Name']) + " : " +  str(err)
 				print "Data: " + str(data)
+				logging.warning("Zendesk Create Organization Error: " + str(account['Name']) + " : " +  str(err))
+				logging.warning("Data: " + str(data))
+				errorCount+=1
 		# Sleep 1 second between orgs
-		time.sleep(.25)
+		#time.sleep(.25)
 
 	print "Total Zendesk Update calls used: " + str(apiCalls)
+	logging.info("Total Zendesk Update calls used: " + str(apiCalls))
+
+	return errorCount
 
 def PullZendeskOrgs(zendesk_conn):
 
@@ -292,13 +390,29 @@ def PullZendeskOrgs(zendesk_conn):
 			runLoop = False
 
 	print "Total Zendesk Organization calls used: " + str(page)
+	logging.info("Total Zendesk Organization calls used: " + str(page))
 
 	return zenOrgs
 
 if __name__ == "__main__":
+
+	# Get the last modified timestamp
+	startTime = PullJobTimeStamp('SFDC_ACCOUNTS_LAST_MODIFIED')
+	print startTime
+	logging.info("Using a start time of " + str(startTime))
+
+	sfdcLastModified = GetSfdcTimestamp()
+	print "Current Salesforce Timestamp: " + str(sfdcLastModified)
+	logging.info("Current Salesforce Timestamp: " + str(sfdcLastModified))
+
 	##### Extract all SFDC Accounts #####
 	logging.info("Pulling Accounts from Salesforce")
-	sfdcAccounts = PullSfdcAccounts()
+	sfdcAccounts = PullSfdcAccounts(startTime)
+
+	if len(sfdcAccounts) == 0:
+		UpdateJobTimeStamp('SFDC_ACCOUNTS_LAST_MODIFIED', sfdcLastModified)
+		logging.info("No modified SFDC Accounts. Exiting.")
+		sys.exit()
 
 	# Zendesk Variables
 	zenURL = config.zenURL
@@ -306,6 +420,7 @@ if __name__ == "__main__":
 	zenPass = config.zenPass
 	zenToken = config.zenToken
 
+	logging.info("Connecting to Zendesk")
 	zendesk = Zendesk(zenURL, zenAgent, zenPass, zenToken)
 
 	##### Extract all Zendesk Organizations #####
@@ -315,7 +430,16 @@ if __name__ == "__main__":
 	except Exception, err:
 		msg = json.loads(err.msg)
 		print msg['error']['message']
+		logging.error("Could not connect to Zendesk: " + msg['error']['message'])
+		logging.error("Exiting...")
+		sys.exit()
 
 	##### Update Zendesk Orgs #####
-	UpsertZendeskOrgs(zendesk, zendeskOrgs, sfdcAccounts)
+	count = UpsertZendeskOrgs(zendesk, zendeskOrgs, sfdcAccounts)
+
+	if count:
+		logging.info("Completed syncing Zendesk Organizations and SFDC Accounts. Errors were encountered and timestamp not updated")
+	else:
+		UpdateJobTimeStamp('SFDC_ACCOUNTS_LAST_MODIFIED', sfdcLastModified)
+		logging.info("Completed syncing Zendesk Organizations and SFDC Accounts.")
 
