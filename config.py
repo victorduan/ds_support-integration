@@ -10,3 +10,12 @@ zenToken = True # Depends on the configuration; if API token logins are allowed
 sfUser = "user@example.com"
 sfPass = "password"
 sfApiToken = "token" 
+
+##### MySQL Variables #####
+mysql_username = "username"
+mysql_database = "database"
+mysql_host = "127.0.0.1"
+
+##### Other Variables #####
+logLevel = "info" # valid values: info, debug
+logFile = "logs/log.log"
