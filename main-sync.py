@@ -9,6 +9,7 @@ import beatbox
 import time
 import mysql.connector
 from zendesk import Zendesk
+from helperclass import MySqlTask
 
 if config.logLevel == "info":
 	logging.basicConfig(format='%(asctime)s | %(levelname)s | %(filename)s | %(message)s', level=logging.INFO, filename=config.logFile)
@@ -64,78 +65,6 @@ def QuerySfdc(query):
 			queryComplete = 'true'
 
 	return results
-
-def GetSfdcTimestamp():
-	# SFDC Variables
-	sf = beatbox._tPartnerNS
-	svc = beatbox.PythonClient()
-	beatbox.gzipRequest=False
-	sf_username = config.sfUser
-	sf_password = config.sfPass
-	sf_api_token = config.sfApiToken
-
-	try:
-		logging.info("Logging into Salesforce")
-		svc.login(sf_username, sf_password + sf_api_token)
-
-	except Exception, err:
-		print err
-		logging.error("Problem logging into Salesforce: " + str(err))
-		logging.error("Exiting...")
-		sys.exit()
-
-	return svc.getServerTimestamp()
-
-def PullJobTimeStamp(jobName):
-	try: 
-		# Open MySQL Connection
-		cnx = mysql.connector.connect(user=config.mysql_username,
-		                              host=config.mysql_host,
-		                              database=config.mysql_database,
-		                              password='94105data')
-
-		# Find the last time from the database - to use as a start time for SFDC pull
-		timeCursor = cnx.cursor()
-		timeQuery = ("SELECT jobvalue FROM sfdc_jobs WHERE jobname = %s")
-		timeCursor.execute(timeQuery, (jobName, ))
-		for (jobvalue) in timeCursor:
-			start_time = jobvalue
-
-		#print start_time[0]
-
-	except Exception, err:
-		logging.exception("Exception in: " + str(sys.argv[0]))
-		logging.exception("Could not fetch timestamp for " + str(jobName))
-		sys.exit()
-
-	cnx.commit()
-	timeCursor.close()
-	cnx.close()
-
-	return start_time[0]
-
-def UpdateJobTimeStamp(jobName, timestamp):
-	try: 
-		# Open MySQL Connection
-		cnx = mysql.connector.connect(user=config.mysql_username,
-		                              host=config.mysql_host,
-		                              database=config.mysql_database,
-		                              password='94105data')
-
-		# Find the last time from the database - to use as a start time for SFDC pull
-		timeCursor = cnx.cursor()
-		storeTime = ("UPDATE sfdc_jobs SET last_run=now(), jobvalue=%s WHERE jobname=%s")
-		timeCursor.execute(storeTime, (timestamp, jobName))
-
-
-	except Exception, err:
-		logging.exception("Exception in: " + str(sys.argv[0]))
-		logging.exception("Could not update timestamp for " + str(jobName))
-		sys.exit()
-
-	cnx.commit()
-	timeCursor.close()
-	cnx.close()
 
 def PullSfdcAccounts(lastModifiedDate='2012-01-01T00:00:00.000Z'):
 
@@ -395,13 +324,18 @@ def PullZendeskOrgs(zendesk_conn):
 	return zenOrgs
 
 if __name__ == "__main__":
+	# Create object for internal database methods (mySQL)
+	mysqlDb = MySqlTask(config.mysql_username, config.mysql_password, config.mysql_host, config.mysql_database)
 
-	# Get the last modified timestamp
-	startTime = PullJobTimeStamp('SFDC_ACCOUNTS_LAST_MODIFIED')
+	# Create object for Salesforce methods
+	sfdc = SalesforceTask(config.sfUser, config.sfPass, config.sfApiToken)
+
+	# Get the last modified timestamp from internal database
+	startTime = mysqlDb.pull_job_timestamp('SFDC_ACCOUNTS_LAST_MODIFIED')
 	print startTime
 	logging.info("Using a start time of " + str(startTime))
 
-	sfdcLastModified = GetSfdcTimestamp()
+	sfdcLastModified = sfdc.sfdc_timestamp()
 	print "Current Salesforce Timestamp: " + str(sfdcLastModified)
 	logging.info("Current Salesforce Timestamp: " + str(sfdcLastModified))
 
@@ -409,8 +343,11 @@ if __name__ == "__main__":
 	logging.info("Pulling Accounts from Salesforce")
 	sfdcAccounts = PullSfdcAccounts(startTime)
 
+	# If there are no SFDC Account modified since the last run, update the internal 
+	# timestamp and exit.
 	if len(sfdcAccounts) == 0:
-		UpdateJobTimeStamp('SFDC_ACCOUNTS_LAST_MODIFIED', sfdcLastModified)
+		mysqlDb.update_job_timestamp('SFDC_ACCOUNTS_LAST_MODIFIED', sfdcLastModified)
+		logging.info("Updating SFDC_ACCOUNTS_LAST_MODIFIED timestamp.")
 		logging.info("No modified SFDC Accounts. Exiting.")
 		sys.exit()
 
@@ -440,6 +377,6 @@ if __name__ == "__main__":
 	if count:
 		logging.info("Completed syncing Zendesk Organizations and SFDC Accounts. Errors were encountered and timestamp not updated")
 	else:
-		UpdateJobTimeStamp('SFDC_ACCOUNTS_LAST_MODIFIED', sfdcLastModified)
+		mysqlDb.update_job_timestamp('SFDC_ACCOUNTS_LAST_MODIFIED', sfdcLastModified)
 		logging.info("Completed syncing Zendesk Organizations and SFDC Accounts.")
 
