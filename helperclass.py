@@ -31,6 +31,7 @@ class SalesforceTask(object):
 		return self.svc.login(self._username, self._password + self._api_token)
 
 	def sfdc_timestamp(self):
+		self.sfdc_connect()
 		return self.svc.getServerTimestamp()
 
 	def sfdc_query(self, query):
