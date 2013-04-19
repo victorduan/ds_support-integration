@@ -7,9 +7,9 @@ import json
 import string
 import beatbox
 import time
-import mysql.connector
 from zendesk import Zendesk
 from helperclass import MySqlTask
+from helperclass import SalesforceTask
 
 if config.logLevel == "info":
 	logging.basicConfig(format='%(asctime)s | %(levelname)s | %(filename)s | %(message)s', level=logging.INFO, filename=config.logFile)
@@ -330,14 +330,14 @@ if __name__ == "__main__":
 	# Create object for Salesforce methods
 	sfdc = SalesforceTask(config.sfUser, config.sfPass, config.sfApiToken)
 
-	# Get the last modified timestamp from internal database
-	startTime = mysqlDb.pull_job_timestamp('SFDC_ACCOUNTS_LAST_MODIFIED')
-	print startTime
-	logging.info("Using a start time of " + str(startTime))
-
 	sfdcLastModified = sfdc.sfdc_timestamp()
 	print "Current Salesforce Timestamp: " + str(sfdcLastModified)
 	logging.info("Current Salesforce Timestamp: " + str(sfdcLastModified))
+
+	# Get the last modified timestamp from internal database
+	startTime = mysqlDb.pull_job_timestamp('SFDC_ACCOUNTS_LAST_MODIFIED')
+	print startTime
+	logging.info("Pulling a start time of " + str(startTime))
 
 	##### Extract all SFDC Accounts #####
 	logging.info("Pulling Accounts from Salesforce")
