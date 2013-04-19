@@ -13,6 +13,7 @@ sfApiToken = "token"
 
 ##### MySQL Variables #####
 mysql_username = "username"
+mysql_password = "password"
 mysql_database = "database"
 mysql_host = "127.0.0.1"
 
