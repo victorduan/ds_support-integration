@@ -5,11 +5,10 @@ import logging
 import config
 import json
 import string
-import beatbox
 import time
-from zendesk import Zendesk
-from helperclass import MySqlTask
-from helperclass import SalesforceTask
+from env import MySqlTask
+from env import SalesforceTask
+from env import ZendeskTask
 
 if config.logLevel == "info":
 	logging.basicConfig(format='%(asctime)s | %(levelname)s | %(filename)s | %(message)s', level=logging.INFO, filename=config.logFile)
@@ -110,7 +109,6 @@ def UpsertZendeskOrgs(zendesk_conn, zendeskOrgs, sfdcAccounts):
 	for org in zendeskOrgs:
 		if org['external_id'] is not None:
 			zendeskExtId[org['external_id']] = org['id']
-			#zendeskString[org['id']] = org['name'] + "_" + org['external_id'] + "_" + str(org['group_id']) + "_" + "_".join(sorted(org['domain_names'])) + "_" + "_".join(sorted(org['tags']))
 			zendeskString[org['id']] = "{0}_{1}_{2}_{3}_{4}".format(org['name'].encode('utf-8'), org['external_id'], org['group_id'], "_".join(sorted(org['domain_names'])), "_".join(sorted(org['tags'])))
 		else:
 			zendeskName[org['name']] = org['id']
@@ -135,7 +133,6 @@ def UpsertZendeskOrgs(zendesk_conn, zendeskOrgs, sfdcAccounts):
 					]
 			tags = [x for x in tags if x] # remove empty strings
 			
-			#sfdc = account['Name'] + "_" + account['AccountId'] + "_" + str(group) + "_" + "_".join(sorted(account['DomainMapping'])) + "_" + "_".join(sorted(tags))
 			sfdc = "{0}_{1}_{2}_{3}_{4}".format(account['Name'], account['AccountId'], group, "_".join(sorted(account['DomainMapping'])), "_".join(sorted(tags)))
 			data = {
 				"organization": {
@@ -159,7 +156,8 @@ def UpsertZendeskOrgs(zendesk_conn, zendeskOrgs, sfdcAccounts):
 				if sfdc != zendeskString[zendeskExtId[account['AccountId']]].encode('utf-8'):
 					print "SFDC: " + sfdc
 					print "ZenD: " + zendeskString[zendeskExtId[account['AccountId']]]
-					result = zendesk_conn.update_organization(organization_id=zendeskExtId[account['AccountId']], data=data)
+					orgId = zendeskExtId[account['AccountId']]
+					result = zendesk_conn.update_organization(orgId, data)
 					apiCalls+=1
 					print "After: " + str(result) # After
 					logging.debug("Zendesk Update: " + str(result))
@@ -190,7 +188,8 @@ def UpsertZendeskOrgs(zendesk_conn, zendeskOrgs, sfdcAccounts):
 			}
 			try:
 				print "Before: " + str(data) # Before
-				result = zendesk_conn.update_organization(organization_id=zendeskName[account['Name']], data=data)
+				orgId = zendeskName[account['Name']]
+				result = zendesk_conn.update_organization(orgId, data)
 				apiCalls+=1
 				print "After: " + str(result) # After
 			except Exception, err:
@@ -220,7 +219,7 @@ def UpsertZendeskOrgs(zendesk_conn, zendeskOrgs, sfdcAccounts):
 			}
 			try:
 				#print "Before: " + str(data) # Before
-				result = zendesk_conn.create_organization(data=data)
+				result = zendesk_conn.create_organization(data)
 				apiCalls+=1
 				#print "After: " + str(result) # After
 			except Exception, err:
@@ -237,48 +236,45 @@ def UpsertZendeskOrgs(zendesk_conn, zendeskOrgs, sfdcAccounts):
 
 	return errorCount
 
-def PullZendeskOrgs(zendesk_conn):
-
-	#### FIELDS #####
-	# {
-	#	"id"
-	#	"external_id"
-	#	"url"
-	#	"name"
-	#	"created_at"
-	#	"updated_at"
-	#	"domain_names"
-	#	"details"
-	#	"notes"
-	#	"group_id"
-	#	"tags"
-	# }
-
-	zenOrgs = []
-	runLoop = True
-	page = 1
-
-	while runLoop:		
-		results = zendesk_conn.list_organizations(page=page)
-		if int(results['count']) > 0:
-			for org in results['organizations']:
-				#print org
-				zenOrgs.append(org)
-			page+=1
-		if results['next_page'] is None:
-			runLoop = False
-
-	print "Total Zendesk Organization calls used: {0}".format(page)
-	logging.info("Total Zendesk Organization calls used: {0}".format(page))
-
-	return zenOrgs
-
 if __name__ == "__main__":
 	# Create object for internal database methods (mySQL)
 	mysqlDb = MySqlTask(config.mysql_username, config.mysql_password, config.mysql_host, config.mysql_database)
 
 	# Create object for Salesforce methods
 	sfdc = SalesforceTask(config.sfUser, config.sfPass, config.sfApiToken)
+
+	# Create object for Zendesk methods
+	zd = ZendeskTask(config.zenURL, config.zenAgent, config.zenPass, config.zenToken)
+
+
+	########## PULL FROM SFDC ##########
+
+	### Pull SFDC Contact Info to Zendesk ###
+	try:
+		sfdcLastModified = sfdc.sfdc_timestamp()
+		print "Current Salesforce Timestamp: {0}".format(sfdcLastModified)
+		logging.info("Current Salesforce Timestamp: {0}".format(sfdcLastModified))
+	except Exception, err:
+		logging.error(err)
+		sys.exit()
+
+	# Get the last modified timestamp from internal database
+	startTime = mysqlDb.pull_job_timestamp('SFDC_CONTACT_LM_PULL')
+	print startTime
+	logging.info("Pulling an internal start time of {0}".format(startTime))
+
+	##### Extract modified SFDC Contacts#####
+	logging.info("Pulling Authorized Support Contacts from Salesforce")
+	sfdcQuery = "SELECT Email FROM Contact WHERE Authorized_Support_Contact__c = True AND LastModifiedDate > {0}".format(startTime)
+	sfdcResults = sfdc.sfdc_query(sfdcQuery)
+
+	for contact in sfdcResults:
+		email = contact['Email']
+		z = zd.search_by_email(email)
+		if z['count']: print z
+		else: print "Did not find a matching email: {0}".format(email)
+
+	### Pull SFDC Account Info to Zendesk Organizations ###
 
 	try:
 		sfdcLastModified = sfdc.sfdc_timestamp()
@@ -312,32 +308,29 @@ if __name__ == "__main__":
 		print "SFDC Account Pulled: {0}".format(len(sfdcAccounts))
 		logging.info("SFDC Account Pulled: {0}".format(len(sfdcAccounts)))
 
-	# Zendesk Variables
-	zenURL = config.zenURL
-	zenAgent = config.zenAgent
-	zenPass = config.zenPass
-	zenToken = config.zenToken
-
-	logging.info("Connecting to Zendesk")
-	zendesk = Zendesk(zenURL, zenAgent, zenPass, zenToken)
+	
 
 	##### Extract all Zendesk Organizations #####
 	try:
-		zendeskOrgs = PullZendeskOrgs(zendesk)
+		zendeskOrgs = zd.get_all_organizations()
 
 	except Exception, err:
+		print err
+		"""
 		msg = json.loads(err.msg)
 		print msg['error']['message']
 		logging.error("Could not connect to Zendesk: {0}".format(msg['error']['message']))
 		logging.error("Exiting...")
-		sys.exit()
+		sys.exit()"""
 
 	##### Update Zendesk Orgs #####
-	count = UpsertZendeskOrgs(zendesk, zendeskOrgs, sfdcAccounts)
+	errCount = UpsertZendeskOrgs(zd, zendeskOrgs, sfdcAccounts)
 
-	if count:
+	if errCount:
 		logging.info("Completed syncing Zendesk Organizations and SFDC Accounts. Errors were encountered and timestamp not updated")
 	else:
 		mysqlDb.update_job_timestamp('SFDC_ACCOUNTS_LAST_MODIFIED', sfdcLastModified)
 		logging.info("Completed syncing Zendesk Organizations and SFDC Accounts.")
+
+	########## PUSH TO SFDC ##########
 
