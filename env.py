@@ -63,6 +63,40 @@ class SalesforceTask(object):
 
 		return results
 
+	def update_sfdc_object(self, objectName, fieldName, data, batchSize=200):
+		batchedData = [] # List to upload in batches to SFDC
+		apiCalls = 0 # Count of API calls used by the function
+		numBatches = 0 # Number of batches needed
+
+		numBatches = len(data)/batchSize
+		if (len(data)%batchSize): # If there is a remainder, add 1
+			numBatches += 1
+
+		for sfdcId in data:
+			batchedData.append(
+					{
+						'type' : objectName,
+						'Id' : sfdcId,
+						fieldName : data[sfdcId]
+					}
+				)
+
+			if len(batchedData) == batchSize:
+				apiCalls += 1
+				#print "Upserting batch of " + str(batchSize) + " into " + objectName + " ... proceeding with batch " + str(apiCalls) + " of " + str(numBatches)
+				print "Upserting batch of {0} into {1} ... proceeding with batch {2} of {3}".format(batchSize, objectName, apiCalls, numBatches)
+				ur = self.svc.upsert('Id', batchedData)
+				batchedData = []
+
+		# Upsert any remaining batch
+		if len(batchedData) > 0:
+			apiCalls += 1
+			print "Upserting batch of {0} into {1} ... proceeding with batch {2} of {3}".format(batchSize, objectName, apiCalls, numBatches)
+			ur = self.svc.upsert('Id', batchedData)
+			batchedData = []
+
+		print "Total API calls used updating {0}: {1}".format(objectName, apiCalls)
+
 class MySqlTask(object):
 
 	_username = ""
