@@ -10,6 +10,7 @@ __date__ = "04/09/2013"
 
 import beatbox
 import mysql.connector
+from zendesk import Zendesk
 
 class SalesforceTask(object):
 
@@ -35,7 +36,7 @@ class SalesforceTask(object):
 		return self.svc.getServerTimestamp()
 
 	def sfdc_query(self, query):
-		self.sfdc_connect
+		self.sfdc_connect()
 
 		results = []
 
@@ -103,4 +104,47 @@ class MySqlTask(object):
 		cnx.commit()
 		timeCursor.close()
 		cnx.close()
+
+class ZendeskTask(object):
+
+	_username = ""
+	_url = ""
+	_password = ""
+	_token = ""
+
+	def __init__(self, url, username, password, token):
+		self._username = username
+		self._password = password
+		self._url = url
+		self._token = token
+		self._zd = Zendesk(self._url, self._username, self._password, self._token)
+
+	def connect(self):
+		return Zendesk(self._url, self._username, self._password, self._token)
+
+	def search_by_email(self, email):
+		return self._zd.search_users(query=email)
+
+	def get_all_organizations(self):
+		zen_orgs = []
+		runLoop = True
+		page = 1
+
+		while runLoop:		
+			results = self._zd.list_organizations(page=page)
+			if int(results['count']) > 0:
+				for org in results['organizations']:
+					zen_orgs.append(org)
+				page+=1
+			if results['next_page'] is None:
+				runLoop = False
+
+		return zen_orgs
+
+	def update_organization(self, orgId, data):
+		return self._zd.update_organization(organization_id=orgId, data=data)
+
+	def create_organization(self, data):
+		return self._zd.create_organization(data=data)
+
 
