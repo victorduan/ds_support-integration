@@ -119,9 +119,6 @@ class ZendeskTask(object):
 		self._token = token
 		self._zd = Zendesk(self._url, self._username, self._password, self._token)
 
-	def connect(self):
-		return Zendesk(self._url, self._username, self._password, self._token)
-
 	def search_by_email(self, email):
 		return self._zd.search_users(query=email)
 
