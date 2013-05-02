@@ -1,7 +1,8 @@
 #!/usr/bin/python
 """
-This contains mainly helper files to perform tasks. 
-Requires the use of BeatBox 20.0 (<LINK>)
+This contains classes for commonly-used
+operations. Requires the Beatbox 20.0, 
+MySQL Connector and Zendesk Python packages
 
 """
 __author__ = "Victor Duan <victor@datasift.com>"
@@ -143,5 +144,3 @@ class ZendeskTask(object):
 
 	def create_organization(self, data):
 		return self._zd.create_organization(data=data)
-
-
