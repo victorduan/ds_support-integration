@@ -1,4 +1,18 @@
-ds_zendesk-sfdc-integration
-===========================
+DataSift Support Integration
+============================
 
-A package of scripts for keeping information between Zendesk and SFDC updated
+A package of Python scripts for keeping information in Zendesk and Salesforce updated
+
+Requirements
+------------
+
+* Python 2.7.2 or similar
+* MySQL 5.5.24 and above
+* [beatbox 20.0](http://pypi.python.org/pypi/beatbox/) : A Python library for interacting with Saleforce.com data via SOAP API
+* [mysql-connector-python-1.0.7](http://dev.mysql.com/downloads/connector/python/) : MySQL Connector/Python is a standardized database driver for Python platforms and development
+* [zendesk-eventbrite](https://github.com/eventbrite/zendesk/) : Zendesk API Python wrapper
+
+Changelog
+---------
+
+* v.0.1.0 Inital version (04/09/2013) 
