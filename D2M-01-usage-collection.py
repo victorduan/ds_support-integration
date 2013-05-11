@@ -1,0 +1,122 @@
+#!/usr/bin/python
+
+import sys
+import logging
+import config
+import ConfigParser
+import datasift
+import time
+import calendar
+from env import MySqlTask
+
+if config.logLevel == "info":
+	logging.basicConfig(format='%(asctime)s | %(levelname)s | %(filename)s | %(message)s', level=logging.INFO, filename=config.logFile)
+else:
+	logging.basicConfig(format='%(asctime)s | %(levelname)s | %(filename)s | %(message)s', level=logging.DEBUG, filename=config.logFile)
+
+
+if __name__ == "__main__":
+	_table_name = 'usage_reporting'
+
+	# Create object for internal database methods (mySQL)
+	mysql = MySqlTask(config.mysql_username, config.mysql_password, config.mysql_host, config.mysql_database)
+
+	retry = 3
+	while retry:
+		try:
+			logging.info("Getting valid columns from MySQL.")
+			valid_sources = mysql.return_columns(_table_name)
+			valid_sources = [ col for col in valid_sources if col not in ('intID', 'username', 'start', 'end', 'stream_type', 'stream_hash', 'seconds') ]
+			logging.debug("Columns found: {0}".format(valid_sources))
+			retry = 0
+		except Exception, err:
+			#print err #2013: Lost connection to MySQL server during query
+			logging.error(err)
+			retry -= 1
+			logging.warning("Retries left: {0}".format(retry))
+			time.sleep(2) # Sleep 2 seconds before retrying
+	
+	user_list = ConfigParser.ConfigParser()
+	user_list.optionxform = str
+	user_list.read("user_list.ini")
+	print user_list.options("Users")
+
+	for username in user_list.options("Users"):
+		api_key = user_list.get("Users", username)
+
+		# Create object for DataSift methods
+		ds = datasift.User(username, api_key)
+
+		retry = 3
+		while retry:
+			try:
+				usage = ds.get_usage('day')
+				logging.info("Getting /usage for user: {0}".format(username))
+				retry = 0
+			except Exception, err:
+				logging.error("Encountered getting /usage for user: {0}. Error message: {1}".format(username, err))
+				retry -= 1
+				logging.warning("Retries left: {0}".format(retry))
+				time.sleep(5) # Sleep 5 seconds before retrying
+
+
+		date_format = "%a, %d %b %Y %H:%M:%S +0000"
+		start 		= time.strptime(usage['start'], date_format)
+		end 		= time.strptime(usage['end'], date_format)
+
+		unix_start 	= calendar.timegm(start)
+		unix_end	= calendar.timegm(end)
+
+		for stream in usage['streams']:
+			if len(stream) == 32:
+				stream_type = "stream"
+			else:
+				stream_type = "historic"
+
+			seconds = usage['streams'][stream]['seconds']
+
+			data = {
+				'username'		: username,
+				'start'			: unix_start,
+				'end'			: unix_end,
+				'stream_type'	: stream_type,
+				'stream_hash' 	: str(stream),
+				'seconds'		: seconds
+			}
+
+			licenses = usage['streams'][stream]['licenses']
+
+			if len(licenses):
+				for license_type, license_value in licenses.items():
+					data[str(license_type)] = license_value
+
+				fields_string = ", ".join([ "`{0}`".format(k) for k in licenses.keys() ])
+				values_string = ", ".join([ "%({0})s".format(k) for k in licenses.keys() ])
+
+				insert_query = ("""
+								INSERT INTO {0} 
+								(`username`, `start`, `end`, `stream_type`, `stream_hash`, `seconds`, {1}) 
+								VALUES (%(username)s, %(start)s, %(end)s, %(stream_type)s, %(stream_hash)s, %(seconds)s, {2})
+								""").format(_table_name, fields_string, values_string)
+
+			# Different MySQL Query if there is no license consumption
+			else:
+				insert_query = ("""
+								INSERT INTO {0} 
+								(`username`, `start`, `end`, `stream_type`, `stream_hash`, `seconds`) 
+								VALUES (%(username)s, %(start)s, %(end)s, %(stream_type)s, %(stream_hash)s, %(seconds)s)
+								""").format(_table_name)
+
+			retry = 3
+			while retry:
+				try:
+					mysql.execute_query(insert_query, data)
+					logging.debug("Attempting to insert: {0} into database".format(data))
+					retry = 0
+				except Exception, err:
+					logging.error("Error inserting into MySQL: {0}".format(insert_query))
+					retry -= 1
+					logging.warning("Query: {0}; Data Dump: {1}".format(insert_query, data))
+					logging.warning("Retries left: {0}".format(retry))
+					time.sleep(2) # Sleep for 2 seconds before retrying
+
