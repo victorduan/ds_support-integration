@@ -39,7 +39,7 @@ if __name__ == "__main__":
 	user_list = ConfigParser.ConfigParser()
 	user_list.optionxform = str
 	user_list.read("user_list.ini")
-	print user_list.options("Users")
+	print "Users to query /usage: {0}".format(user_list.options("Users"))
 
 	for username in user_list.options("Users"):
 		api_key = user_list.get("Users", username)
@@ -52,6 +52,7 @@ if __name__ == "__main__":
 			try:
 				usage = ds.get_usage('day')
 				logging.info("Getting /usage for user: {0}".format(username))
+				print "Getting /usage for user: {0}".format(username)
 				retry = 0
 			except Exception, err:
 				logging.error("Encountered getting /usage for user: {0}. Error message: {1}".format(username, err))
@@ -88,7 +89,9 @@ if __name__ == "__main__":
 
 			if len(licenses):
 				for license_type, license_value in licenses.items():
-					data[str(license_type)] = license_value
+					# Only add licenses for columns that exist in the database
+					if any(str(license_type) in x for x in valid_sources):
+						data[str(license_type)] = license_value
 
 				fields_string = ", ".join([ "`{0}`".format(k) for k in licenses.keys() ])
 				values_string = ", ".join([ "%({0})s".format(k) for k in licenses.keys() ])
@@ -109,14 +112,16 @@ if __name__ == "__main__":
 
 			retry = 3
 			while retry:
+				query = " ".join(insert_query.split())
 				try:
-					mysql.execute_query(insert_query, data)
+					mysql.execute_query(query, data)
 					logging.debug("Attempting to insert: {0} into database".format(data))
 					retry = 0
 				except Exception, err:
-					logging.error("Error inserting into MySQL: {0}".format(insert_query))
+					logging.error("Error inserting into MySQL: {0}".format(query))
+					logging.error("Error: {0}".format(err))
 					retry -= 1
-					logging.warning("Query: {0}; Data Dump: {1}".format(insert_query, data))
+					logging.warning("Query: {0}; Data Dump: {1}".format(query, data))
 					logging.warning("Retries left: {0}".format(retry))
 					time.sleep(2) # Sleep for 2 seconds before retrying
 

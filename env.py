@@ -140,6 +140,34 @@ class MySqlTask(object):
 		timeCursor.close()
 		cnx.close()
 
+	def return_columns(self, table_name):
+		# Open MySQL Connection
+		cnx = mysql.connector.connect(user=self._username,  password=self._password, host=self._host, database=self._database)
+		columns = []
+		query = "show columns from {0}".format(table_name)
+		cursor = cnx.cursor()
+		cursor.execute(query)
+
+		for (Field, Type, Null, Key, Default, Extra) in cursor:
+			columns.append(Field)
+
+		cnx.commit()
+		cursor.close()
+		cnx.close()
+
+		return columns
+
+	def execute_query(self, query, data=''):
+		# Open MySQL Connection
+		cnx = mysql.connector.connect(user=self._username,  password=self._password, host=self._host, database=self._database)
+
+		cursor = cnx.cursor()
+		cursor.execute(query, data)
+
+		cnx.commit()
+		cursor.close()
+		cnx.close()	
+
 class ZendeskTask(object):
 
 	_username = ""
