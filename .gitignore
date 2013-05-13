@@ -13,6 +13,7 @@ test.py
 *.tar
 *.tar.gz
 *.zip
+*.ini
 
 # Logs and databases #
 *.log
