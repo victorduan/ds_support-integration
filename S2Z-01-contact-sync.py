@@ -26,7 +26,6 @@ if __name__ == "__main__":
 	### Pull SFDC Contact Info to Zendesk ###
 	try:
 		sfdcLastModified = sfdc.sfdc_timestamp()
-		print "Current Salesforce Timestamp: {0}".format(sfdcLastModified)
 		logging.info("Current Salesforce Timestamp: {0}".format(sfdcLastModified))
 	except Exception, err:
 		logging.error(err)
@@ -34,7 +33,6 @@ if __name__ == "__main__":
 
 	# Get the last modified timestamp from internal database
 	startTime = mysqlDb.pull_job_timestamp('SFDC_CONTACT_LM_PULL')
-	print startTime
 	logging.info("Pulling an internal start time of {0}".format(startTime))
 
 	##### Extract modified SFDC Contacts#####

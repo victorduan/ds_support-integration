@@ -165,7 +165,7 @@ def UpsertZendeskOrgs(zendesk_conn, zendeskOrgs, sfdcAccounts):
 				print "Zendesk Update Organization Error for ID {0} : {1}".format(zendeskExtId[account['AccountId']], err)
 				print err
 				print data['organization']['name']
-				logging.warning("Zendesk Update Organization Error for ID {0} : {1}".format(zendeskExtId[account['AccountId']], err))
+				logging.exception("Zendesk Update Organization Error for ID {0} : {1}".format(zendeskExtId[account['AccountId']], err))
 				logging.warning("Data: {0}".format(data))
 				errorCount+=1
 		### SECOND - Try to match by organization name ###
@@ -193,9 +193,7 @@ def UpsertZendeskOrgs(zendesk_conn, zendeskOrgs, sfdcAccounts):
 				apiCalls+=1
 				print "After: " + str(result) # After
 			except Exception, err:
-				print "Zendesk Update Organization Error for Name {0} : {1}".format(zendeskName[account['Name']], err)
-				print data['organization']['name']
-				logging.warning("Zendesk Update Organization Error for Name {0} : {1}".format(zendeskName[account['Name']], err))
+				logging.exception("Zendesk Update Organization Error for Name {0} : {1}".format(zendeskName[account['Name']], err))
 				logging.warning("Data: {0}".format(data))
 				errorCount+=1
 		### THIRD - Try to create the organization in Zendesk ###
@@ -218,20 +216,21 @@ def UpsertZendeskOrgs(zendesk_conn, zendeskOrgs, sfdcAccounts):
 						}
 			}
 			try:
-				#print "Before: " + str(data) # Before
 				result = zendesk_conn.create_organization(data)
 				apiCalls+=1
-				#print "After: " + str(result) # After
 			except Exception, err:
-				print "Zendesk Create Organization Error: {0} : {1}".format(account['Name'], err)
-				print "Data: " + str(data)
-				logging.warning("Zendesk Create Organization Error: {0} : {1}".format(account['Name'], err))
+				logging.exception("Zendesk Create Organization Error: {0} : {1}".format(account['Name'], err))
 				logging.warning("Data: {0}".format(data))
-				errorCount+=1
-		# Sleep 1 second between orgs
-		#time.sleep(.25)
+				
+				msg = json.loads(err.msg)
+				
+				if "description" in msg["details"]["name"][0]:
+					print "exists"
+				else:
+					print "does not exist"
 
-	print "Total Zendesk Update calls used: {0}".format(apiCalls)
+				errorCount += 1
+
 	logging.info("Total Zendesk Update calls used: {0}".format(apiCalls))
 
 	return errorCount
@@ -246,48 +245,18 @@ if __name__ == "__main__":
 	# Create object for Zendesk methods
 	zd = ZendeskTask(config.zenURL, config.zenAgent, config.zenPass, config.zenToken)
 
-
-	########## PULL FROM SFDC ##########
-
-	### Pull SFDC Contact Info to Zendesk ###
-	try:
-		sfdcLastModified = sfdc.sfdc_timestamp()
-		print "Current Salesforce Timestamp: {0}".format(sfdcLastModified)
-		logging.info("Current Salesforce Timestamp: {0}".format(sfdcLastModified))
-	except Exception, err:
-		logging.error(err)
-		sys.exit()
-
-	# Get the last modified timestamp from internal database
-	startTime = mysqlDb.pull_job_timestamp('SFDC_CONTACT_LM_PULL')
-	print startTime
-	logging.info("Pulling an internal start time of {0}".format(startTime))
-
-	##### Extract modified SFDC Contacts#####
-	logging.info("Pulling Authorized Support Contacts from Salesforce")
-	sfdcQuery = "SELECT Email FROM Contact WHERE Authorized_Support_Contact__c = True AND LastModifiedDate > {0}".format(startTime)
-	sfdcResults = sfdc.sfdc_query(sfdcQuery)
-
-	for contact in sfdcResults:
-		email = contact['Email']
-		z = zd.search_by_email(email)
-		if z['count']: print z
-		else: print "Did not find a matching email: {0}".format(email)
-
 	### Pull SFDC Account Info to Zendesk Organizations ###
 
 	try:
 		sfdcLastModified = sfdc.sfdc_timestamp()
-		print "Current Salesforce Timestamp: {0}".format(sfdcLastModified)
 		logging.info("Current Salesforce Timestamp: {0}".format(sfdcLastModified))
 	except Exception, err:
-		logging.error(err)
+		logging.exception(err)
 		sys.exit()
 
 	# Get the last modified timestamp from internal database
 	startTime = mysqlDb.pull_job_timestamp('SFDC_ACCOUNTS_LAST_MODIFIED')
-	print startTime
-	logging.info("Pulling a start time of {0}".format(startTime))
+	logging.info("Pulling SFDC_ACCOUNTS_LAST_MODIFIED; start time of {0}".format(startTime))
 
 	##### Extract all SFDC Accounts #####
 	logging.info("Pulling Accounts from Salesforce")
@@ -305,32 +274,22 @@ if __name__ == "__main__":
 		sys.exit()
 
 	else:
-		print "SFDC Account Pulled: {0}".format(len(sfdcAccounts))
-		logging.info("SFDC Account Pulled: {0}".format(len(sfdcAccounts)))
+		logging.info("SFDC Account(s) Pulled: {0}".format(len(sfdcAccounts)))
 
-	
 
 	##### Extract all Zendesk Organizations #####
 	try:
 		zendeskOrgs = zd.get_all_organizations()
 
 	except Exception, err:
-		print err
-		"""
-		msg = json.loads(err.msg)
-		print msg['error']['message']
-		logging.error("Could not connect to Zendesk: {0}".format(msg['error']['message']))
-		logging.error("Exiting...")
-		sys.exit()"""
+		logging.exception(err)
 
 	##### Update Zendesk Orgs #####
 	errCount = UpsertZendeskOrgs(zd, zendeskOrgs, sfdcAccounts)
 
 	if errCount:
-		logging.info("Completed syncing Zendesk Organizations and SFDC Accounts. Errors were encountered and timestamp not updated")
+		logging.info("Completed syncing Zendesk Organizations and SFDC Accounts. Errors were encountered and timestamp not updated.")
 	else:
 		mysqlDb.update_job_timestamp('SFDC_ACCOUNTS_LAST_MODIFIED', sfdcLastModified)
 		logging.info("Completed syncing Zendesk Organizations and SFDC Accounts.")
-
-	########## PUSH TO SFDC ##########
 

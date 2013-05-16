@@ -2,6 +2,8 @@
 *.pyc
 config*.py
 test.py
+.project
+.pydevproject
 
 # Packages #
 *.7z

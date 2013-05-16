@@ -9,9 +9,15 @@ __author__ = "Victor Duan <victor@datasift.com>"
 __version__ = "0.1.0"
 __date__ = "04/09/2013"
 
+# Custom Modules
 import beatbox
 import mysql.connector
 from zendesk import Zendesk
+
+# Other Imports
+import datetime
+import calendar
+import time
 
 class SalesforceTask(object):
 
@@ -42,8 +48,6 @@ class SalesforceTask(object):
 		results = []
 
 		qr = self.svc.query(query)
-
-		print "Result size: " + str(qr['size'])
 
 		# Check to see if any work needs to be done by checking result size
 		if qr['size']:
@@ -99,10 +103,10 @@ class SalesforceTask(object):
 
 class MySqlTask(object):
 
-	_username = ""
-	_password = ""
-	_host = ""
-	_database = ""
+	_username 	= ""
+	_password 	= ""
+	_host 		= ""
+	_database 	= ""
 
 	def __init__(self, username, password, host, database):
 		self._username = username
@@ -170,10 +174,10 @@ class MySqlTask(object):
 
 class ZendeskTask(object):
 
-	_username = ""
-	_url = ""
-	_password = ""
-	_token = ""
+	_username 	= ""
+	_url 		= ""
+	_password 	= ""
+	_token 		= ""
 
 	def __init__(self, url, username, password, token):
 		self._username = username
@@ -206,3 +210,32 @@ class ZendeskTask(object):
 
 	def create_organization(self, data):
 		return self._zd.create_organization(data=data)
+	
+	def get_tickets(self, start_time):
+		tickets 		= []
+		runLoop 		= True
+		current_time	= datetime.datetime.now() - datetime.timedelta(minutes=6)
+		current_unix	= calendar.timegm(current_time.utctimetuple())
+		
+		while runLoop:
+			try:
+				results = self._zd.ticket_export(start_time=start_time)
+				
+			except Exception, err:
+				if err.error_code == 429:
+					# Handles message "Number of allowed incremental ticket export API requests per minute exceeded"
+					time.sleep(30)
+					continue
+				
+			start_time = results['end_time']
+			
+			for ticket in results['results']:
+				tickets.append(ticket)
+			
+			time.sleep(15)
+			
+			if start_time > current_unix:
+				# Stops the loop if the time is within 6 minutes of the current time
+				runLoop = False
+				
+		return { 'end_time' : start_time, 'results' : tickets }
