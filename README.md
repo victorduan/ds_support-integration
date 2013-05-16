@@ -15,4 +15,6 @@ Requirements
 Changelog
 ---------
 
-* v.0.1.0 Inital version (04/09/2013) 
+* v.0.2.0 Adding a script to poll Zendesk metrics into MySQL database (2013-05-16)
+
+* v.0.1.0 Inital version (2013-04-09) 
