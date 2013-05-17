@@ -214,7 +214,7 @@ class ZendeskTask(object):
 	def get_tickets(self, start_time):
 		tickets 		= []
 		runLoop 		= True
-		current_time	= datetime.datetime.now() - datetime.timedelta(minutes=6)
+		current_time	= datetime.datetime.now() - datetime.timedelta(minutes=30)
 		current_unix	= calendar.timegm(current_time.utctimetuple())
 		
 		while runLoop:
@@ -223,7 +223,6 @@ class ZendeskTask(object):
 				print "exporting"
 				
 			except Exception, err:
-				print err
 				if err.error_code == 429:
 					# Handles message "Number of allowed incremental ticket export API requests per minute exceeded"
 					time.sleep(int(err.retry_after) + 1)
