@@ -184,10 +184,10 @@ class ZendeskTask(object):
 		self._password = password
 		self._url = url
 		self._token = token
-		self._zd = Zendesk(self._url, self._username, self._password, self._token)
+		self._zd = Zendesk(self._url, self._username, self._password, self._token, api_version=2)
 
 	def search_by_email(self, email):
-		return self._zd.search_users(query=email)
+		return self._zd.search_user(query=email)
 
 	def get_all_organizations(self):
 		zen_orgs = []

@@ -1,6 +1,6 @@
 #!/bin/bash
 
-SCRIPT_DIR=/ebs/support-integration/ds-support-integration
+SCRIPT_DIR=/ebs/support-integration/datasift
 
 cd $SCRIPT_DIR
 
