@@ -47,8 +47,11 @@ if __name__ == "__main__":
     start_time = mysqlDb.pull_job_timestamp("INCREMENTAL_EXPORT")
 
     logging.info("INCREMENTAL_EXPORT: start_time={0}".format(start_time))
-    tickets = zd.get_tickets(start_time)
+    try:
+        tickets = zd.get_tickets(start_time)
 
+    except Exception, err:
+        logging.exception(err)
     #print tickets
 
     dbQuery = ("INSERT INTO zendesk_tickets "
@@ -173,4 +176,6 @@ if __name__ == "__main__":
     logging.info("INCREMENTAL_EXPORT: end_time={0}".format(tickets['end_time']))
     
     mysqlDb.update_job_timestamp("INCREMENTAL_EXPORT", str(tickets['end_time']))
+    
+    logging.info("Done exporting Zendesk ticket updates.")
 

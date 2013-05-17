@@ -220,11 +220,13 @@ class ZendeskTask(object):
 		while runLoop:
 			try:
 				results = self._zd.export_incremental_tickets(start_time=start_time)
+				print "exporting"
 				
 			except Exception, err:
+				print err
 				if err.error_code == 429:
 					# Handles message "Number of allowed incremental ticket export API requests per minute exceeded"
-					time.sleep(30)
+					time.sleep(int(err.retry_after) + 1)
 					continue
 				
 			start_time = results['end_time']
@@ -232,7 +234,8 @@ class ZendeskTask(object):
 			for ticket in results['results']:
 				tickets.append(ticket)
 			
-			time.sleep(15)
+			# Sleeping an arbitrary 10 seconds
+			time.sleep(10)
 			
 			if start_time > current_unix:
 				# Stops the loop if the time is within 6 minutes of the current time
