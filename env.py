@@ -219,7 +219,7 @@ class ZendeskTask(object):
 		
 		while runLoop:
 			try:
-				results = self._zd.ticket_export(start_time=start_time)
+				results = self._zd.export_incremental_tickets(start_time=start_time)
 				
 			except Exception, err:
 				if err.error_code == 429:
