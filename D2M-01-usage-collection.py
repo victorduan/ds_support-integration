@@ -129,7 +129,7 @@ if __name__ == "__main__":
 			else:			mysql.close()
 		except Exception, err:
 			logging.exception(err)
-			logging.error("Query: {0}".format(insert_query))
+			logging.error("Query: {0}".format(insert_string))
 			sys.exit()
 		
 	logging.info("Tasks completed.")
