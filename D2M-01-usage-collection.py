@@ -93,13 +93,15 @@ if __name__ == "__main__":
 			licenses = usage['streams'][stream]['licenses']
 
 			if len(licenses):
+				headers = []
 				for license_type, license_value in licenses.items():
 					# Only add licenses for columns that exist in the database
 					if any(str(license_type) in x for x in valid_sources):
 						data[str(license_type)] = license_value
+						headers.append(str(license_type))
 
-				fields_string = ", ".join([ "`{0}`".format(k) for k in licenses.keys() ])
-				values_string = ", ".join([ "%({0})s".format(k) for k in licenses.keys() ])
+				fields_string = ", ".join([ "`{0}`".format(k) for k in headers ])
+				values_string = ", ".join([ "%({0})s".format(k) for k in headers ])
 
 				insert_query = ("""
 								INSERT INTO {0} 
