@@ -1,11 +1,10 @@
 #!/bin/bash
 
-SCRIPT_DIR=/ebs/support-integration/datasift
-
-cd $SCRIPT_DIR
+SCRIPT=$(dirname $(readlink -f $0))
+SCRIPT_DIR=`cd $SCRIPT; cd ..; pwd`
 
 echo
 echo "********************************"
 echo "Pulling /usage for list of users"
 echo "********************************"
-time ${SCRIPT_DIR}/D2M-01-usage-collection.py
+time ${SCRIPT_DIR}/D2M-01-usage-collection.py/Users/victorduan/datasift/ds_support-integration/scripts/run_salesforce_scripts.sh

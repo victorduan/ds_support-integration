@@ -43,6 +43,9 @@ if __name__ == "__main__":
 
 	for username in user_list.options("Users"):
 		api_key = user_list.get("Users", username)
+		
+		# Connect to the mysql database
+		mysql.connect()
 
 		# Create object for DataSift methods
 		ds = datasift.User(username, api_key)
@@ -68,6 +71,8 @@ if __name__ == "__main__":
 		unix_start 	= calendar.timegm(start)
 		unix_end	= calendar.timegm(end)
 
+		insert_string = ''
+		
 		for stream in usage['streams']:
 			if len(stream) == 32:
 				stream_type = "stream"
@@ -109,19 +114,22 @@ if __name__ == "__main__":
 								(`username`, `start`, `end`, `stream_type`, `stream_hash`, `seconds`) 
 								VALUES (%(username)s, %(start)s, %(end)s, %(stream_type)s, %(stream_hash)s, %(seconds)s)
 								""").format(_table_name)
-
-			retry = 3
-			while retry:
-				query = " ".join(insert_query.split())
-				try:
-					mysql.execute_query(query, data)
-					logging.debug("Attempting to insert: {0} into database".format(data))
-					retry = 0
-				except Exception, err:
-					logging.error("Error inserting into MySQL: {0}".format(query))
-					logging.error("Error: {0}".format(err))
-					retry -= 1
-					logging.warning("Query: {0}; Data Dump: {1}".format(query, data))
-					logging.warning("Retries left: {0}".format(retry))
-					time.sleep(2) # Sleep for 2 seconds before retrying
+								
+			# Concatenate all the INSERT statements    
+			insert_string += " ".join(insert_query.split()) % data
+        	
+		try:
+			insert_count= 0 
+			cursor = mysql.execute_many(insert_string)
+			for insert in cursor:
+				insert_count += 1
+				
+			# Commit the inserts for the user (if there are results)
+			if insert_count: mysql.commit()
+			else:			mysql.close()
+		except Exception, err:
+			logging.exception(err)
+			sys.exit()
+		
+	logging.info("Tasks completed.")
 

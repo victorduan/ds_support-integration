@@ -12,7 +12,6 @@ if config.logLevel == "info":
 else:
 	logging.basicConfig(format='%(asctime)s | %(levelname)s | %(filename)s | %(message)s', level=logging.DEBUG, filename=config.logFile)
 
-
 if __name__ == "__main__":
 	# Create object for internal database methods (mySQL)
 	mysqlDb = MySqlTask(config.mysql_username, config.mysql_password, config.mysql_host, config.mysql_database)
@@ -37,7 +36,7 @@ if __name__ == "__main__":
 
 	##### Extract modified SFDC Contacts#####
 	logging.info("Pulling Authorized Support Contacts from Salesforce")
-	sfdcQuery = "SELECT Email FROM Contact WHERE Authorized_Support_Contact__c = True AND LastModifiedDate > {0}".format(startTime)
+	sfdcQuery = "SELECT Email, MailingPostalCode, Phone FROM Contact WHERE Authorized_Support_Contact__c = True AND LastModifiedDate > {0}".format(startTime)
 	sfdcResults = sfdc.sfdc_query(sfdcQuery)
 
 	for contact in sfdcResults:
@@ -45,3 +44,6 @@ if __name__ == "__main__":
 		z = zd.search_by_email(email)
 		if z['count']: print z
 		else: print "Did not find a matching email: {0}".format(email)
+		
+	
+	

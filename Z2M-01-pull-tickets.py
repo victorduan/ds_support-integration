@@ -42,6 +42,7 @@ if __name__ == "__main__":
     
     # Create object for internal database methods (mySQL)
     mysqlDb = MySqlTask(config.mysql_username, config.mysql_password, config.mysql_host, config.mysql_database)
+    mysqlDb.connect()
 
     # Grab the last time Accounts were successfully updated
     start_time = mysqlDb.pull_job_timestamp("INCREMENTAL_EXPORT")
@@ -170,6 +171,10 @@ if __name__ == "__main__":
             }
         logging.debug("Database data: {0}".format(ticket_data))
         mysqlDb.execute_query(dbQuery, ticket_data)
+    
+    # Properly close the connection
+    if len(tickets['results']): mysqlDb.commit()
+    else: mysqlDb.close()
 
     logging.info("Completed pulling tickets from Zendesk. End time is: {0}".format(tickets['end_time']))
 

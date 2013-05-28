@@ -1,8 +1,7 @@
 #!/bin/bash
 
-SCRIPT_DIR=/ebs/support-integration/datasift
-
-cd $SCRIPT_DIR
+SCRIPT=$(dirname $(readlink -f $0))
+SCRIPT_DIR=`cd $SCRIPT; cd ..; pwd`
 
 echo
 echo "*******************************"

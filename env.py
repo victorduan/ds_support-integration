@@ -12,6 +12,7 @@ __date__ = "04/09/2013"
 # Custom Modules
 import beatbox
 import mysql.connector
+from mysql.connector.constants import ClientFlag
 from zendesk import Zendesk
 
 # Other Imports
@@ -130,6 +131,23 @@ class MySqlTask(object):
 		cnx.close()
 
 		return start_time[0]
+	
+	def get_timezone_by_zip(self, zipcode):
+		timezone = ""
+		
+		query = "SELECT * FROM timezones_by_zip WHERE zip = {0}".format(zipcode)
+		
+		# Open MySQL Connection
+		self.connect()
+		
+		cursor = self.execute_query(query)
+		
+		for row in cursor:
+			timezone = dict(zip(cursor.column_names, row))['timezone']
+		
+		self.close()
+		
+		return timezone
 
 	def update_job_timestamp(self, job_name, timestamp):
 		# Open MySQL Connection
@@ -161,16 +179,32 @@ class MySqlTask(object):
 
 		return columns
 
+	def connect(self):
+		flags = [ClientFlag.MULTI_STATEMENTS]
+		self._cnx = mysql.connector.connect(user=self._username,  password=self._password, host=self._host, database=self._database, client_flags=flags)
+		return self._cnx
+
 	def execute_query(self, query, data=''):
-		# Open MySQL Connection
-		cnx = mysql.connector.connect(user=self._username,  password=self._password, host=self._host, database=self._database)
+		self._cnx.autocommit = False
+		
+		self._cursor = self._cnx.cursor()
+		self._cursor.execute(query, data)
+		
+		return self._cursor
+	
+	def execute_many(self, query):
+		self._cnx.autocommit = False
+		self._cursor = self._cnx.cursor()
 
-		cursor = cnx.cursor()
-		cursor.execute(query, data)
+		return self._cursor.execute(query, multi=True)
 
-		cnx.commit()
-		cursor.close()
-		cnx.close()	
+	def commit(self):
+		self._cnx.commit()
+		self._cursor.close()
+		self._cnx.close()   
+		
+	def close(self):
+		self._cnx.close() 
 
 class ZendeskTask(object):
 
@@ -220,7 +254,6 @@ class ZendeskTask(object):
 		while runLoop:
 			try:
 				results = self._zd.export_incremental_tickets(start_time=start_time)
-				print "exporting"
 				
 			except Exception, err:
 				if err.error_code == 429:
