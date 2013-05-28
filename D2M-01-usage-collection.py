@@ -73,7 +73,7 @@ if __name__ == "__main__":
 
 		insert_string = ''
 		
-		if usage['streams'] is not None:
+		if len(usage['streams']):
 		
 			for stream in usage['streams']:
 				if len(stream) == 32:
