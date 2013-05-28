@@ -104,7 +104,7 @@ if __name__ == "__main__":
 				insert_query = ("""
 								INSERT INTO {0} 
 								(`username`, `start`, `end`, `stream_type`, `stream_hash`, `seconds`, {1}) 
-								VALUES (%(username)s, %(start)s, %(end)s, %(stream_type)s, %(stream_hash)s, %(seconds)s, {2});
+								VALUES ('%(username)s', %(start)s, %(end)s, '%(stream_type)s', '%(stream_hash)s', %(seconds)s, {2});
 								""").format(_table_name, fields_string, values_string)
 
 			# Different MySQL Query if there is no license consumption
@@ -112,7 +112,7 @@ if __name__ == "__main__":
 				insert_query = ("""
 								INSERT INTO {0} 
 								(`username`, `start`, `end`, `stream_type`, `stream_hash`, `seconds`) 
-								VALUES (%(username)s, %(start)s, %(end)s, %(stream_type)s, %(stream_hash)s, %(seconds)s);
+								VALUES ('%(username)s', %(start)s, %(end)s, '%(stream_type)s', '%(stream_hash)s', %(seconds)s);
 								""").format(_table_name)
 								
 			# Concatenate all the INSERT statements    
