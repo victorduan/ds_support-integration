@@ -134,9 +134,10 @@ if __name__ == "__main__":
 			except Exception, err:
 				logging.exception(err)
 				logging.error("Query: {0}".format(insert_string))
+				continue
 				
 		else:
-			logging.info("No streams consumed in the past 24 hours for user: {1}".format(username)) 
+			logging.info("No streams consumed in the past 24 hours for user: {0}".format(username)) 
 		
 	logging.info("Tasks completed.")
 

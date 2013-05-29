@@ -57,17 +57,23 @@ def ProcessSfdcAccounts(results):
 			domains = string.split(record['Zendesk__Domain_Mapping__c'])
 		else:
 			domains = []
+			
+		if record['Twitter_Rate_Approval__c'] != '':
+			twitter = "twitter_rate_approval:" + record['Twitter_Rate_Approval__c'].replace(" ", "_").strip()
+		else:
+			twitter = ''
 
 		processedResults.append(
 			{
-				'Name': record['Name'],
-				'NSE' : nse,
-				'TAM' : tam,
-				'Subscription' : record['Subscription_Plan__c'].replace(" ", ""),
-				'SupportPackage' : record['Support_Package__c'],
-				'AccountId' : record['Id'],
-				'DomainMapping' : domains,
-				'AccountOwner' : ao
+				'Name'					: record['Name'],
+				'NSE' 					: nse,
+				'TAM' 					: tam,
+				'Subscription' 			: record['Subscription_Plan__c'].replace(" ", ""),
+				'SupportPackage' 		: record['Support_Package__c'],
+				'AccountId' 			: record['Id'],
+				'DomainMapping' 		: domains,
+				'AccountOwner' 			: ao,
+				'TwitterRateApproval' 	: twitter
 			}
 		)
 	return processedResults
@@ -129,7 +135,8 @@ def UpsertZendeskOrgs(zendesk_conn, zendeskOrgs, sfdcAccounts):
 						account['AccountOwner'].lower(), 
 						account['TAM'].lower(),
 						account['NSE'].lower(),
-						account['Subscription'].lower()
+						account['Subscription'].lower(),
+						account['TwitterRateApproval'].lower()
 					]
 			tags = [x for x in tags if x] # remove empty strings
 			
@@ -146,7 +153,8 @@ def UpsertZendeskOrgs(zendesk_conn, zendeskOrgs, sfdcAccounts):
 									account['AccountOwner'], 
 									account['TAM'],
 									account['NSE'],
-									account['Subscription']
+									account['Subscription'],
+									account['TwitterRateApproval']
 								]
 						}
 			}
@@ -182,7 +190,8 @@ def UpsertZendeskOrgs(zendesk_conn, zendeskOrgs, sfdcAccounts):
 									account['AccountOwner'], 
 									account['TAM'],
 									account['NSE'],
-									account['Subscription']
+									account['Subscription'],
+									account['TwitterRateApproval']
 								]
 						}
 			}
@@ -211,7 +220,8 @@ def UpsertZendeskOrgs(zendesk_conn, zendeskOrgs, sfdcAccounts):
 									account['AccountOwner'], 
 									account['TAM'],
 									account['NSE'],
-									account['Subscription']
+									account['Subscription'],
+									account['TwitterRateApproval']
 								]
 						}
 			}
@@ -260,7 +270,7 @@ if __name__ == "__main__":
 
 	##### Extract all SFDC Accounts #####
 	logging.info("Pulling Accounts from Salesforce")
-	sfdcQuery = """SELECT Id, Name, Subscription_Plan__c, Support_Package__c, Zendesk__Domain_Mapping__c, Account_Owner_Name__c, Named_Support_Engineer__c, Technical_Account_Manager__r.Name 
+	sfdcQuery = """SELECT Id, Name, Subscription_Plan__c, Support_Package__c, Zendesk__Domain_Mapping__c, Account_Owner_Name__c, Named_Support_Engineer__c, Technical_Account_Manager__r.Name, Twitter_Rate_Approval__c  
 				FROM Account WHERE LastModifiedDate > {0}""".format(startTime)
 	sfdcResults = sfdc.sfdc_query(sfdcQuery)
 	sfdcAccounts = ProcessSfdcAccounts(sfdcResults)
