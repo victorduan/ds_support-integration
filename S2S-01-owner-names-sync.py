@@ -57,7 +57,7 @@ if __name__ == "__main__":
 
 		query = "SELECT Id, Name, OwnerId, Owner.Name, Account_Owner_Name__c FROM Account WHERE LastModifiedDate > {0}".format(scriptLastRun)
 		results = sfdc.sfdc_query(query)
-		accountUpdates = processQueryResults(accountOwnerField, results)
+		accountUpdates = processQueryResults(accountOwnerField, results['results'])
 
 		if len(accountUpdates):
 			print "Processing {0} Accounts".format(len(accountUpdates))
@@ -74,7 +74,7 @@ if __name__ == "__main__":
 
 		query = "SELECT Id, Name, OwnerId, Owner.Name, Lead_Owner_Name__c FROM Lead WHERE LastModifiedDate > {0}".format(scriptLastRun)
 		results = sfdc.sfdc_query(query)
-		leadUpdates = processQueryResults(leadOwnerField, results)
+		leadUpdates = processQueryResults(leadOwnerField, results['results'])
 
 		if len(leadUpdates):
 			print "Processing {0} Leads".format(len(leadUpdates))
@@ -92,7 +92,7 @@ if __name__ == "__main__":
 		query = "SELECT Id, Name, OwnerId, Owner.Name, Contact_Owner_Name__c FROM Contact WHERE LastModifiedDate > {0}".format(scriptLastRun)
 		results = sfdc.sfdc_query(query)
 
-		contactUpdates = processQueryResults(leadOwnerField, results)
+		contactUpdates = processQueryResults(leadOwnerField, results['results'])
 
 		if len(contactUpdates):
 			print "Processing {0} Contacts".format(len(contactUpdates))

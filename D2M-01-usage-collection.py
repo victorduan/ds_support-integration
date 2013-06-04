@@ -1,5 +1,6 @@
 #!/usr/bin/python
 
+import os
 import sys
 import logging
 import config
@@ -38,7 +39,10 @@ if __name__ == "__main__":
 	
 	user_list = ConfigParser.ConfigParser()
 	user_list.optionxform = str
-	user_list.read("user_list.ini")
+	
+	path = os.path.dirname(os.path.realpath(__file__))
+	user_list.read(path+"/user_list.ini")
+	
 	print "Users to query /usage: {0}".format(user_list.options("Users"))
 
 	for username in user_list.options("Users"):

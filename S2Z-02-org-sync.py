@@ -273,7 +273,7 @@ if __name__ == "__main__":
 	sfdcQuery = """SELECT Id, Name, Subscription_Plan__c, Support_Package__c, Zendesk__Domain_Mapping__c, Account_Owner_Name__c, Named_Support_Engineer__c, Technical_Account_Manager__r.Name, Twitter_Rate_Approval__c  
 				FROM Account WHERE LastModifiedDate > {0}""".format(startTime)
 	sfdcResults = sfdc.sfdc_query(sfdcQuery)
-	sfdcAccounts = ProcessSfdcAccounts(sfdcResults)
+	sfdcAccounts = ProcessSfdcAccounts(sfdcResults['results'])
 
 	# If there are no SFDC Account modified since the last run, update the internal 
 	# timestamp and exit.

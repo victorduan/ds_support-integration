@@ -66,7 +66,7 @@ class SalesforceTask(object):
 			else:
 				queryComplete = 'true'
 
-		return results
+		return { "count" : qr['size'], "results" : results }
 
 	def update_sfdc_object(self, objectName, fieldName, data, batchSize=200):
 		batchedData = [] # List to upload in batches to SFDC
@@ -244,6 +244,9 @@ class ZendeskTask(object):
 
 	def create_organization(self, data):
 		return self._zd.create_organization(data=data)
+	
+	def update_user(self, userId, data):
+		return self._zd.update_user(user_id=userId, data=data)
 	
 	def get_tickets(self, start_time):
 		tickets 		= []
