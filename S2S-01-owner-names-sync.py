@@ -92,7 +92,7 @@ if __name__ == "__main__":
 		query = "SELECT Id, Name, OwnerId, Owner.Name, Contact_Owner_Name__c FROM Contact WHERE LastModifiedDate > {0}".format(scriptLastRun)
 		results = sfdc.sfdc_query(query)
 
-		contactUpdates = processQueryResults(leadOwnerField, results['results'])
+		contactUpdates = processQueryResults(contactOwnerField, results['results'])
 
 		if len(contactUpdates):
 			print "Processing {0} Contacts".format(len(contactUpdates))
