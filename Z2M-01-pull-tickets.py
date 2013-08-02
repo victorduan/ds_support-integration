@@ -71,7 +71,7 @@ if __name__ == "__main__":
                     "%(agent_wait_time_in_minutes)s, %(agent_wait_time_in_minutes_within_business_hours)s, "
                     "%(requester_wait_time_in_minutes)s,%(requester_wait_time_in_minutes_within_business_hours)s, "
                     "%(on_hold_time_in_minutes)s, %(on_hold_time_in_minutes_within_business_hours)s, "
-                    "%(url)s, %(datasift_username)s,%(category)s, %(status)s)"
+                    "%(url)s, %(datasift_username)s,%(category)s, %(status)s, %(jira_ticket_id)s)"
                 "ON DUPLICATE KEY UPDATE "
                     "generated_timestamp = %(generated_timestamp)s, "
                     "req_name = %(req_name)s, "
@@ -110,7 +110,8 @@ if __name__ == "__main__":
                     "on_hold_time_in_minutes_within_business_hours = %(on_hold_time_in_minutes_within_business_hours)s, "
                     "datasift_username = %(datasift_username)s, "
                     "category = %(category)s,"
-                    "status = %(status)s"
+                    "status = %(status)s,"
+                    "jira_ticket_id = %(jira_ticket_id)s"
     )
 
     logging.info("Found {0} updated tickets.".format(len(tickets['results'])))
@@ -167,7 +168,8 @@ if __name__ == "__main__":
                 'url': t['url'],
                 'datasift_username': t['field_20729302'],
                 'category': t['field_20409116'],
-                'status': t['status']
+                'status': t['status'],
+                'jira_ticket_id' : t['field_22679531']
             }
         logging.debug("Database data: {0}".format(ticket_data))
         mysqlDb.execute_query(dbQuery, ticket_data)
