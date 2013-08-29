@@ -19,6 +19,7 @@ from zendesk import Zendesk
 import datetime
 import calendar
 import time
+import json
 
 class SalesforceTask(object):
 
@@ -247,6 +248,28 @@ class ZendeskTask(object):
 	
 	def update_user(self, userId, data):
 		return self._zd.update_user(user_id=userId, data=data)
+
+	def list_organization_fields(self):
+		r = json.loads(self._zd.list_organization_fields())
+		return { "count" : r['count'], "fields" : r['organization_fields'] }
+
+	def get_existing_organization_field_options(self, field_id):
+		return self._zd.show_organization_field(field_id=field_id)['organization_field']['custom_field_options']
+
+	def add_organization_field_dropdown(self, field_id, field_name='Vict0r Duan', field_value='test1'):
+		# Dropdown fields need all options to be added
+		existing_fields = self.get_existing_organization_field_options(field_id=field_id)
+
+		existing_fields.append({ 'name' : field_name, 'value' : field_value })
+		data = { "organization_field" : { "custom_field_options" : [{"name": "test", "value": "test2"}] }}
+		try:
+			print data
+			print self._zd.update_organization_fields(field_id=field_id, data=data)
+		except Exception, err:
+			print err
+			return self.get_existing_organization_field_options(field_id=field_id)
+
+		return self.get_existing_organization_field_options(field_id=field_id)
 	
 	def get_tickets(self, start_time):
 		tickets 		= []

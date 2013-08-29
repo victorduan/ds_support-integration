@@ -297,6 +297,9 @@ if __name__ == "__main__":
 	##### Update Zendesk Orgs #####
 	errCount = UpsertZendeskOrgs(zd, zendeskOrgs, sfdcAccounts)
 
+	##### Update Zendesk Organization Custom Fields #####
+	org_fields = zd.list_organization_fields()
+
 	if errCount:
 		logging.info("Completed syncing Zendesk Organizations and SFDC Accounts. Errors were encountered and timestamp not updated.")
 	else:
