@@ -49,6 +49,13 @@ mysql_database = "database"
 mysql_host = "127.0.0.1"
 mysql_password = "password"
 
+zendeskMySql = {
+	"username" : "username",
+	"password" : "password",
+	"database" : "database",
+	"host" 	   : "127.0.0.1"
+}
+
 ##### Other Variables #####
 logLevel = "debug" # valid values: info, debug
 logFile = "logs/log.log"

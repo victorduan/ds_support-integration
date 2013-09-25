@@ -41,11 +41,14 @@ if __name__ == "__main__":
     zd = ZendeskTask(config.zenURL, config.zenAgent, config.zenPass, config.zenToken)
     
     # Create object for internal database methods (mySQL)
-    mysqlDb = MySqlTask(config.mysql_username, config.mysql_password, config.mysql_host, config.mysql_database)
-    mysqlDb.connect()
+    zendeskDb = MySqlTask(config.zendeskMySql['username'],
+                          config.zendeskMySql['password'],
+                          config.zendeskMySql['host'],
+                          config.zendeskMySql['database'])
+    zendeskDb.connect()
 
     # Grab the last time Accounts were successfully updated
-    start_time = mysqlDb.pull_job_timestamp("INCREMENTAL_EXPORT")
+    start_time = zendeskDb.pull_job_timestamp("INCREMENTAL_EXPORT")
 
     logging.info("INCREMENTAL_EXPORT: start_time={0}".format(start_time))
     try:
@@ -55,7 +58,7 @@ if __name__ == "__main__":
         logging.exception(err)
     #print tickets
 
-    dbQuery = ("INSERT INTO zendesk_tickets "
+    dbQuery = ("INSERT INTO tickets "
                 "VALUES (%(ticket_id)s, %(generated_timestamp)s, "
                     "%(req_name)s, %(req_id)s, %(req_external_id)s, "
                     "%(req_email)s, %(submitter_name)s, %(assignee_name)s, "
@@ -172,17 +175,19 @@ if __name__ == "__main__":
                 'jira_ticket_id' : t['field_22679531']
             }
         logging.debug("Database data: {0}".format(ticket_data))
-        mysqlDb.execute_query(dbQuery, ticket_data)
+        zendeskDb.execute_query(dbQuery, ticket_data)
     
     # Properly close the connection
-    if len(tickets['results']): mysqlDb.commit()
-    else: mysqlDb.close()
+    if len(tickets['results']): 
+        zendeskDb.commit()
+    else: 
+        zendeskDb.close()
 
     logging.info("Completed pulling tickets from Zendesk. End time is: {0}".format(tickets['end_time']))
 
     logging.info("INCREMENTAL_EXPORT: end_time={0}".format(tickets['end_time']))
     
-    mysqlDb.update_job_timestamp("INCREMENTAL_EXPORT", str(tickets['end_time']))
+    zendeskDb.update_job_timestamp("INCREMENTAL_EXPORT", str(tickets['end_time']))
     
     logging.info("Done exporting Zendesk ticket updates.")
 
