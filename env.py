@@ -122,7 +122,7 @@ class MySqlTask(object):
 
 		# Find the last time from the database - to use as a start time for SFDC pull
 		timeCursor = cnx.cursor()
-		timeQuery = ("SELECT jobvalue FROM sfdc_jobs WHERE jobname = %s")
+		timeQuery = ("SELECT jobvalue FROM job_timestamps WHERE jobname = %s")
 		timeCursor.execute(timeQuery, (job_name, ))
 		for (jobvalue) in timeCursor:
 			start_time = jobvalue
@@ -156,7 +156,7 @@ class MySqlTask(object):
 
 		# Find the last time from the database - to use as a start time for SFDC pull
 		timeCursor = cnx.cursor()
-		storeTime = ("UPDATE sfdc_jobs SET last_run=now(), jobvalue=%s WHERE jobname=%s")
+		storeTime = ("UPDATE job_timestamps SET last_run=now(), jobvalue=%s WHERE jobname=%s")
 		timeCursor.execute(storeTime, (timestamp, job_name))
 
 		cnx.commit()
