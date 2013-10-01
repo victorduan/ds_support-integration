@@ -231,6 +231,8 @@ class ZendeskTask(object):
 
 		while runLoop:		
 			results = self._zd.list_organizations(page=page)
+			print len(results)
+
 			if int(results['count']) > 0:
 				for org in results['organizations']:
 					zen_orgs.append(org)
@@ -250,7 +252,7 @@ class ZendeskTask(object):
 		return self._zd.update_user(user_id=userId, data=data)
 
 	def list_organization_fields(self):
-		r = json.loads(self._zd.list_organization_fields())
+		r = self._zd.list_organization_fields()
 		return { "count" : r['count'], "fields" : r['organization_fields'] }
 
 	def get_existing_organization_field_options(self, field_id):
