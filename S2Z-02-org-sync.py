@@ -1,5 +1,14 @@
 #!/usr/bin/python
 
+"""
+Purpose of this script is to pull fields from SFDC and map/update to fields in Zendesk
+
+USAGE: python S2Z-02-org-sync.py
+
+Ideally, this should be put in a cron job and run at least hourly
+
+"""
+
 import sys
 import logging
 import config
@@ -143,7 +152,7 @@ def UpsertZendeskOrgs(zendesk_conn, zendeskOrgs, sfdcAccounts):
 			sfdc = "{0}_{1}_{2}_{3}_{4}".format(account['Name'], account['AccountId'], group, "_".join(sorted(account['DomainMapping'])), "_".join(sorted(tags)))
 			data = {
 				"organization": {
-						'name' : account['Name'].decode('utf-8'),
+						'name' : account['Name'],
 						'shared_comments' : True,
 						'shared_tickets' : True,
 						'domain_names' : account['DomainMapping'],
@@ -161,7 +170,7 @@ def UpsertZendeskOrgs(zendesk_conn, zendeskOrgs, sfdcAccounts):
 			
 			try:
 				#print "Before: " + str(data) # Before
-				if sfdc != zendeskString[zendeskExtId[account['AccountId']]].encode('utf-8'):
+				if sfdc != zendeskString[zendeskExtId[account['AccountId']]]:
 					print "SFDC: " + sfdc
 					print "ZenD: " + zendeskString[zendeskExtId[account['AccountId']]]
 					orgId = zendeskExtId[account['AccountId']]
@@ -180,7 +189,7 @@ def UpsertZendeskOrgs(zendesk_conn, zendeskOrgs, sfdcAccounts):
 		elif account['Name'] in zendeskName:
 			data = {
 				"organization": {
-						'name' : account['Name'].decode('utf-8'),
+						'name' : account['Name'],
 						'shared_comments' : True,
 						'shared_tickets' : True,
 						'domain_names' : account['DomainMapping'],
@@ -210,7 +219,7 @@ def UpsertZendeskOrgs(zendesk_conn, zendeskOrgs, sfdcAccounts):
 			#print "Need to create org: " + str(account['Name'])
 			data = {
 				"organization": {
-						'name' : account['Name'].decode('utf-8'),
+						'name' : account['Name'],
 						'shared_comments' : True,
 						'shared_tickets' : True,
 						'domain_names' : account['DomainMapping'],
@@ -274,6 +283,12 @@ if __name__ == "__main__":
 				FROM Account WHERE LastModifiedDate > {0}""".format(startTime)
 	sfdcResults = sfdc.sfdc_query(sfdcQuery)
 	sfdcAccounts = ProcessSfdcAccounts(sfdcResults['results'])
+
+	"""
+	Pusedo-code
+
+	
+	"""
 
 	# If there are no SFDC Account modified since the last run, update the internal 
 	# timestamp and exit.
