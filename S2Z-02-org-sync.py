@@ -141,7 +141,6 @@ def UpsertZendeskOrgs(zendesk_conn, zendeskOrgs, sfdcAccounts):
 			group = standard
 		### FIRST, Try ID-based matching ###
 		if account['AccountId'] in zendeskExtId:
-			print "FIRST %s : %s" % (account['Name'], account['AccountId'])
 			tags = [ 	
 						account['AccountOwner'].lower(), 
 						account['TAM'].lower(),
@@ -188,9 +187,7 @@ def UpsertZendeskOrgs(zendesk_conn, zendeskOrgs, sfdcAccounts):
 				logging.warning("Data: {0}".format(data))
 				errorCount+=1
 		### SECOND - Try to match by organization name ###
-		#elif zendeskName.has_key(account['Name']):
 		elif account['Name'] in zendeskName:
-			print "SECOND: %s : %s" % (account['Name'], account['AccountId'])
 			data = {
 				"organization": {
 						'name' : account['Name'],
@@ -220,7 +217,6 @@ def UpsertZendeskOrgs(zendesk_conn, zendeskOrgs, sfdcAccounts):
 				errorCount+=1
 		### THIRD - Try to create the organization in Zendesk ###
 		else:
-			print "THIRD: %s : %s" % (account['Name'], account['AccountId'])
 			data = {
 				"organization": {
 						'name' : account['Name'],
@@ -255,50 +251,9 @@ def UpsertZendeskOrgs(zendesk_conn, zendeskOrgs, sfdcAccounts):
 
 				errorCount += 1
 
-	# Process any duplicates
-	#if len(possibleDuplicates):
-	#	DuplicateHandler(possibleDuplicates)
-
 	logging.info("Total Zendesk Update calls used: {0}".format(apiCalls))
 
 	return errorCount
-
-def DuplicateHandler(data):
-	# Function to verify duplicates and send an email if necessary
-	print "Duplicates!"
-	print data
-
-	# Create object for Salesforce methods
-	sfdc = SalesforceTask(config.sfUser, config.sfPass, config.sfApiToken)
-
-	# Create object for Zendesk methods
-	zd = ZendeskTask(config.zenURL, config.zenAgent, config.zenPass, config.zenToken)
-
-	for accountName in data:
-		results = sfdc.sfdc_query("SELECT Name, Id FROM Account WHERE Name = '%s'" % (accountName))
-		if "count" in results:
-			print results
-			if results['count'] > 2:
-				print "Ruh Roh! Duplicates found in SFDC, need to skip"
-			elif results['count'] == 2:
-				external_id = results['results'][0]['Id']
-				# Search for the Organization by name in Zendesk
-				orgSearch = zd.search_organization_by_name(name=accountName)
-				try:
-					#print orgSearch['organizations'][0]['id']
-					print orgSearch['organizations'][0]['external_id']
-					orgId = orgSearch['organizations'][0]['id']
-					data = {
-						"organization" : {
-							"external_id"	: external_id
-						}
-					}
-					result = zd.update_organization(orgId, data)
-					print result
-				except Exception, err:
-					print err
-
-
 
 
 if __name__ == "__main__":
