@@ -120,15 +120,16 @@ def UpsertZendeskOrgs(zendesk_conn, zendeskOrgs, sfdcAccounts):
 	zendeskString = {} # Zendesk-ID based key to store string
 	apiCalls = 0
 	errorCount = 0
+	possibleDuplicates = []
 
 	for org in zendeskOrgs:
 		if org['external_id'] is not None:
 			zendeskExtId[org['external_id']] = org['id']
 			zendeskString[org['id']] = "{0}_{1}_{2}_{3}_{4}".format(org['name'].encode('utf-8'), org['external_id'], org['group_id'], "_".join(sorted(org['domain_names'])), "_".join(sorted(org['tags'])))
-		else:
 			zendeskName[org['name']] = org['id']
 
 	for account in sfdcAccounts:
+		print account
 		# Find the appropriate Support Group by the Package
 		if account['SupportPackage'] == 'Elite':
 			group = elite
@@ -216,7 +217,6 @@ def UpsertZendeskOrgs(zendesk_conn, zendeskOrgs, sfdcAccounts):
 				errorCount+=1
 		### THIRD - Try to create the organization in Zendesk ###
 		else:
-			#print "Need to create org: " + str(account['Name'])
 			data = {
 				"organization": {
 						'name' : account['Name'],
@@ -244,7 +244,8 @@ def UpsertZendeskOrgs(zendesk_conn, zendeskOrgs, sfdcAccounts):
 				msg = json.loads(err.msg)
 				
 				if "description" in msg["details"]["name"][0]:
-					print "exists"
+					if msg["details"]["name"][0]["description"] == "Name has already been taken":
+						possibleDuplicates.append(account['Name'])
 				else:
 					print "does not exist"
 
@@ -253,6 +254,7 @@ def UpsertZendeskOrgs(zendesk_conn, zendeskOrgs, sfdcAccounts):
 	logging.info("Total Zendesk Update calls used: {0}".format(apiCalls))
 
 	return errorCount
+
 
 if __name__ == "__main__":
 	# Create object for internal database methods (mySQL)

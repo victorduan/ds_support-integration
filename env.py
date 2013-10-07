@@ -20,6 +20,7 @@ import datetime
 import calendar
 import time
 import json
+import urllib
 
 class SalesforceTask(object):
 
@@ -231,7 +232,6 @@ class ZendeskTask(object):
 
 		while runLoop:		
 			results = self._zd.list_organizations(page=page)
-			print len(results)
 
 			if int(results['count']) > 0:
 				for org in results['organizations']:
@@ -254,6 +254,9 @@ class ZendeskTask(object):
 	def list_organization_fields(self):
 		r = self._zd.list_organization_fields()
 		return { "count" : r['count'], "fields" : r['organization_fields'] }
+
+	def search_organization_by_name(self, name):
+		return self._zd.autocomplete_organizations(name=name)
 
 	def get_existing_organization_field_options(self, field_id):
 		return self._zd.show_organization_field(field_id=field_id)['organization_field']['custom_field_options']
