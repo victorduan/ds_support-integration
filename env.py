@@ -186,6 +186,19 @@ class MySqlTask(object):
 		self._cnx = mysql.connector.connect(user=self._username,  password=self._password, host=self._host, database=self._database, client_flags=flags)
 		return self._cnx
 
+	def select_query(self, query):
+		# Executes a query against the current database and returns the results
+		cursor = self._cnx.cursor()
+		cursor.execute(query)
+		results	= []
+		for row in cursor:
+			results.append(row)
+
+		self._cnx.commit()
+		cursor.close()
+
+		return results
+
 	def execute_query(self, query, data=''):
 		self._cnx.autocommit = False
 		
