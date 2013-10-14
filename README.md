@@ -15,6 +15,7 @@ Requirements
 Changelog
 ---------
 
+* v.0.3.0 Added usage reporting scripts for Premier/Elite customers (2013-10-14)
 * v.0.2.3 Improved handling of duplicate SFDC records (2013-10-07)
 * v.0.2.2 Minor tweaks to handling UTF-8 characters (2013-10-01)
 * v.0.2.1 Migrated Zendesk metrics into separate MySQL database (2013-09-25)
