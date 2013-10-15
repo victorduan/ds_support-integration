@@ -204,7 +204,7 @@ def WriteCsv (headers, path, filename, data):
 			csvwriter.writerow(row)
 
 if __name__ == "__main__":
-	locale.setlocale(locale.LC_ALL, 'en_us')
+	locale.setlocale(locale.LC_ALL, 'en_us.UTF-8')
 	if len(sys.argv) < 2:
 		sys.stderr.write('Please specify the month and year as the two command line arguments!\n')
 		usage()
