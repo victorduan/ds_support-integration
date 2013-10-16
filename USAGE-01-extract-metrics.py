@@ -120,6 +120,8 @@ def DataSourceVsAugmentations(month_num, year, user_name, path):
 			WHERE calendar.date >= '{1}' and calendar.date < date_add('{1}', interval 1 month);
 			""".format(user_name, fromDate)
 	
+	print query
+	
 	results = QueryMySql(query)
 
 	# Get days in the month to be generated as keys for dictionary
@@ -163,6 +165,8 @@ def LicenseBreakdownPie(month_num, year, user_name, path):
 			""".format(user_name, fromDate)
 
 	results = QueryMySql(query)
+
+	print query
 
 	for row in results:
 		rowName = reportingconfig.dataSourceMapping[row[0]]['label']
