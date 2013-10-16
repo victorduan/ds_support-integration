@@ -8,6 +8,7 @@ import ConfigParser
 import datasift
 import time
 import calendar
+from datetime import datetime
 from env import MySqlTask
 
 if config.logLevel == "info":
@@ -90,7 +91,9 @@ if __name__ == "__main__":
 				data = {
 					'username'		: username,
 					'start'			: unix_start,
+					'startDate'		: datetime.utcfromtimestamp(unix_start),
 					'end'			: unix_end,
+					'endDate'		: datetime.utcfromtimestamp(unix_end),
 					'stream_type'	: stream_type,
 					'stream_hash' 	: str(stream),
 					'seconds'		: seconds
@@ -111,16 +114,16 @@ if __name__ == "__main__":
 	
 					insert_query = ("""
 									INSERT INTO {0} 
-									(`username`, `start`, `end`, `stream_type`, `stream_hash`, `seconds`, {1}) 
-									VALUES ('%(username)s', %(start)s, %(end)s, '%(stream_type)s', '%(stream_hash)s', %(seconds)s, {2});
+									(`username`, `start`, `startDate`, `end`, `endDate`, `stream_type`, `stream_hash`, `seconds`, {1}) 
+									VALUES ('%(username)s', %(start)s, '%(startDate)s', %(end)s, '%(endDate)s', '%(stream_type)s', '%(stream_hash)s', %(seconds)s, {2});
 									""").format(_table_name, fields_string, values_string)
 	
 				# Different MySQL Query if there is no license consumption
 				else:
 					insert_query = ("""
 									INSERT INTO {0} 
-									(`username`, `start`, `end`, `stream_type`, `stream_hash`, `seconds`) 
-									VALUES ('%(username)s', %(start)s, %(end)s, '%(stream_type)s', '%(stream_hash)s', %(seconds)s);
+									(`username`, `start`, `startDate`, `end`, `endDate`, `stream_type`, `stream_hash`, `seconds`) 
+									VALUES ('%(username)s', %(start)s, '%(startDate)s', %(end)s, '%(endDate)s', '%(stream_type)s', '%(stream_hash)s', %(seconds)s);
 									""").format(_table_name)
 									
 				# Concatenate all the INSERT statements    

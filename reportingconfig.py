@@ -32,4 +32,4 @@ dataSourceMapping = {
 	'youtube'		: { 'type' : 'Data Source', 'label' : 'YouTube' },
 }
 
-dataDirectory = "data"
+dataDirectory = "reporting/data"

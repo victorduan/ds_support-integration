@@ -120,6 +120,8 @@ def DataSourceVsAugmentations(month_num, year, user_name, path):
 			WHERE calendar.date >= '{1}' and calendar.date < date_add('{1}', interval 1 month);
 			""".format(user_name, fromDate)
 	
+	print query
+	
 	results = QueryMySql(query)
 
 	# Get days in the month to be generated as keys for dictionary
@@ -164,6 +166,8 @@ def LicenseBreakdownPie(month_num, year, user_name, path):
 
 	results = QueryMySql(query)
 
+	print query
+
 	for row in results:
 		rowName = reportingconfig.dataSourceMapping[row[0]]['label']
 		csvDataVolume.append({ 'name' : rowName, 'value' : row[1] })
@@ -204,7 +208,7 @@ def WriteCsv (headers, path, filename, data):
 			csvwriter.writerow(row)
 
 if __name__ == "__main__":
-	locale.setlocale(locale.LC_ALL, 'en_us')
+	locale.setlocale(locale.LC_ALL, 'en_us.UTF-8')
 	if len(sys.argv) < 2:
 		sys.stderr.write('Please specify the month and year as the two command line arguments!\n')
 		usage()
