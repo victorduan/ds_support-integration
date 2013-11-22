@@ -21,6 +21,7 @@ import calendar
 import time
 import json
 import urllib
+import requests
 
 class SalesforceTask(object):
 
@@ -227,6 +228,7 @@ class ZendeskTask(object):
 	_url 		= ""
 	_password 	= ""
 	_token 		= ""
+	_headers	= {}
 
 	def __init__(self, url, username, password, token):
 		self._username = username
@@ -234,6 +236,7 @@ class ZendeskTask(object):
 		self._url = url
 		self._token = token
 		self._zd = Zendesk(self._url, self._username, self._password, self._token, api_version=2)
+		self._headers = {'content-type': 'application/json'}
 
 	def search_by_email(self, email):
 		return self._zd.search_user(query=email)
@@ -258,8 +261,22 @@ class ZendeskTask(object):
 	def update_organization(self, orgId, data):
 		return self._zd.update_organization(organization_id=orgId, data=data)
 
+	def update_organization_v2(self, orgId, data):
+		# Use requests module instead
+		username = self._username + '/token'
+		url = '{0}/api/v2/organizations/{1}.json'.format(self._url, orgId)
+		r = requests.put(url, auth=(username, self._password), headers=self._headers, data=json.dumps(data))
+		return r.content
+
 	def create_organization(self, data):
 		return self._zd.create_organization(data=data)
+
+	def create_organization_v2(self, data):
+		# Use requests module instead
+		username = self._username + '/token'
+		url = '{0}/api/v2/organizations.json'.format(self._url)
+		r = requests.post(url, auth=(username, self._password), headers=self._headers, data=json.dumps(data))
+		return r.content
 	
 	def update_user(self, userId, data):
 		return self._zd.update_user(user_id=userId, data=data)
