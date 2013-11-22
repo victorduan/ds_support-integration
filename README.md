@@ -10,7 +10,7 @@ Requirements
 * MySQL 5.5.24 and above
 * [beatbox 20.0](http://pypi.python.org/pypi/beatbox/) : A Python library for interacting with Saleforce.com data via SOAP API
 * [mysql-connector-python-1.0.7](http://dev.mysql.com/downloads/connector/python/) : MySQL Connector/Python is a standardized database driver for Python platforms and development
-* [zendesk-eventbrite](https://github.com/victorduan/zendesk/) : Modified version of original Zendesk library version [here](https://github.com/eventbrite/zendesk/)
+* [zendesk](https://github.com/victorduan/zendesk/) : A Python API library wrapper; Forked from [zendesk-eventbrite](https://github.com/eventbrite/zendesk/)
 
 Changelog
 ---------
