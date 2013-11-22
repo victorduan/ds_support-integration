@@ -1,4 +1,5 @@
-#!/usr/bin/python
+#!/usr/bin
+# -*- coding: utf-8 -*- 
 
 """
 Purpose of this script is to pull fields from SFDC and map/update to fields in Zendesk
@@ -129,7 +130,7 @@ def UpsertZendeskOrgs(zendesk_conn, zendeskOrgs, sfdcAccounts):
 			zendeskName[org['name']] = org['id']
 
 	for account in sfdcAccounts:
-		print account
+
 		# Find the appropriate Support Group by the Package
 		if account['SupportPackage'] == 'Elite':
 			group = elite
@@ -175,7 +176,7 @@ def UpsertZendeskOrgs(zendesk_conn, zendeskOrgs, sfdcAccounts):
 					print "SFDC: " + sfdc
 					print "ZenD: " + zendeskString[zendeskExtId[account['AccountId']]]
 					orgId = zendeskExtId[account['AccountId']]
-					result = zendesk_conn.update_organization(orgId, data)
+					result = zendesk_conn.update_organization_v2(orgId, data)
 					apiCalls+=1
 					print "After: " + str(result) # After
 					logging.debug("Zendesk Update: " + str(result))
@@ -208,7 +209,7 @@ def UpsertZendeskOrgs(zendesk_conn, zendeskOrgs, sfdcAccounts):
 			try:
 				print "Before: " + str(data) # Before
 				orgId = zendeskName[account['Name']]
-				result = zendesk_conn.update_organization(orgId, data)
+				result = zendesk_conn.update_organization_v2(orgId, data)
 				apiCalls+=1
 				print "After: " + str(result) # After
 			except Exception, err:
@@ -235,7 +236,7 @@ def UpsertZendeskOrgs(zendesk_conn, zendeskOrgs, sfdcAccounts):
 						}
 			}
 			try:
-				result = zendesk_conn.create_organization(data)
+				result = zendesk_conn.create_organization_v2(data)
 				apiCalls+=1
 			except Exception, err:
 				logging.exception("Zendesk Create Organization Error: {0} : {1}".format(account['Name'], err))
