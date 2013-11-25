@@ -1,4 +1,5 @@
 from env import MySqlTask
+from env import SalesforceTask
 import config
 import reportingconfig
 
@@ -176,26 +177,23 @@ def LicenseBreakdownPie(month_num, year, user_name, path):
 	WriteCsv(csvHeader, path, 'license_volume_pie.csv', csvDataVolume)
 	WriteCsv(csvHeader, path, 'license_fees_pie.csv', csvDataFees)
 
-def GetUsers(month_num, year):
-	fromDate 	= datetime.date(year=year, month=month_num, day=1)
+def GetUsers():
 	users   	= []
 
 	query = """
-			SELECT distinct(username) 
-			FROM usage_reporting 
-			WHERE startDate >= '{0}' and startDate < date_add('{0}', interval 1 month);
-			""".format(fromDate)
+			SELECT Id, Username_s__c 
+			FROM Account 
+			WHERE Support_Package__c in ('Premier', 'Elite', 'Elite VIP') and Account_Status__c = 'Customer'
+			"""
 
-	# Create object for internal database methods (mySQL)
-	mysqlDb = MySqlTask(config.mysql_username, config.mysql_password, config.mysql_host, config.mysql_database)
-	mysqlDb.connect()
+	# Create object for Salesforce methods
+	sfdc = SalesforceTask(config.sfUser, config.sfPass, config.sfApiToken)
+	results = sfdc.sfdc_query(query)
 
-	results = mysqlDb.select_query(query)
-
-	mysqlDb.close()
-
-	for row in results:
-		users.append(row[0])
+	for row in results['results']:
+		user_list = row['Username_s__c'].split(',')
+		for user in user_list:
+			users.append(user)
 
 	return users
 
@@ -208,7 +206,7 @@ def WriteCsv (headers, path, filename, data):
 			csvwriter.writerow(row)
 
 if __name__ == "__main__":
-	locale.setlocale(locale.LC_ALL, 'en_us.UTF-8')
+	locale.setlocale(locale.LC_ALL, config.locale)
 	if len(sys.argv) < 2:
 		sys.stderr.write('Please specify the month and year as the two command line arguments!\n')
 		usage()
@@ -238,8 +236,8 @@ if __name__ == "__main__":
 
 	if not runOnce:
 		# Select all users in the month
-		users = GetUsers(month, year)
-		print users
+		users = GetUsers()
+		sys.exit()
 		if len(users):
 			for user in users:
 				userPath = workingDir + '/' + user

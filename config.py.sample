@@ -59,3 +59,4 @@ zendeskMySql = {
 ##### Other Variables #####
 logLevel = "debug" # valid values: info, debug
 logFile = "logs/log.log"
+locale = "en_us.UTF-8"
