@@ -46,32 +46,21 @@ def ProcessSfdcAccounts(results):
 		#		'Support_Package__c': 'Standard', 
 		#		'type': 'Account', 
 		#		'Id': '0013000001AAZTKAA5', 
-		#		'Account_Owner_Name__c': 'John Novak'
+		#		'Account_Owner_Name__c': 'John Novak',
+		#		'Account_Status__c' : 'Engaged',
+		#		'Username_s__c' : 'simstu'
 		#	}
 		try:
 			tam = "tam:" + record['Technical_Account_Manager__r']['Name'].replace(" ", "_").strip()
 		except:
 			tam = ''
 
-		if record['Account_Owner_Name__c'] != '':
-			ao = "ao:" + record['Account_Owner_Name__c'].replace(" ", "_").strip()
-		else:
-			ao = ''
-
-		if record['Named_Support_Engineer__c'] != '':
-			nse = "nse:" + record['Named_Support_Engineer__c'].replace(" ", "_").strip()
-		else:
-			nse = ''
-
-		if record['Zendesk__Domain_Mapping__c'] != '':
-			domains = string.split(record['Zendesk__Domain_Mapping__c'])
-		else:
-			domains = []
-			
-		if record['Twitter_Rate_Approval__c'] != '':
-			twitter = "twitter_rate_approval:" + record['Twitter_Rate_Approval__c'].replace(" ", "_").strip()
-		else:
-			twitter = ''
+		ao = "ao:" + record['Account_Owner_Name__c'].replace(" ", "_").strip() if record['Account_Owner_Name__c'] != '' else ''
+		nse = "nse:" + record['Named_Support_Engineer__c'].replace(" ", "_").strip() if record['Named_Support_Engineer__c'] != '' else ''
+		domains = string.split(record['Zendesk__Domain_Mapping__c']) if record['Zendesk__Domain_Mapping__c'] != '' else []
+		twitter = "twitter_rate_approval:" + record['Twitter_Rate_Approval__c'].replace(" ", "_").strip() if record['Twitter_Rate_Approval__c'] != '' else ''
+		account_status = "account_status:" + record['Account_Status__c'].replace(" ", "_").strip() if record['Account_Status__c'] != '' else ""
+		known_usernames = record['Username_s__c']
 
 		processedResults.append(
 			{
@@ -83,32 +72,44 @@ def ProcessSfdcAccounts(results):
 				'AccountId' 			: record['Id'],
 				'DomainMapping' 		: domains,
 				'AccountOwner' 			: ao,
-				'TwitterRateApproval' 	: twitter
+				'TwitterRateApproval' 	: twitter,
+				'AccountStatus'			: account_status,
+				'KnownUsernames'		: known_usernames
 			}
 		)
 	return processedResults
 
 def UpsertZendeskOrgs(zendesk_conn, zendeskOrgs, sfdcAccounts):
-	# 
-	# {
-  	#	u'name': u'WebTrends',
-	#	  u'shared_comments': False,
-	#	  u'url': u'https://datasiftsupport.zendesk.com/api/v2/organizations/23820183.json',
-	#	  u'created_at': u'2013-02-08T23:35:14Z',
-	#	  u'tags': [
-	#	    
-	#	  ],
-	#	  u'updated_at': u'2013-03-23T15:53:36Z',
-	#	  u'domain_names': [
-	#	    
-	#	  ],
-	#	  u'details': None,
-	#	  u'notes': None,
-	#	  u'group_id': None,
-	#	  u'external_id': None,
-	#	  u'id': 23820183,
-	#	  u'shared_tickets': False
-	#	}
+	#{
+	#    "organization": {
+	#        "url": "https://datasiftsupport.zendesk.com/api/v2/organizations/20386337.json",
+	#        "id": 20386337,
+	#        "name": "DataSift",
+	#        "shared_tickets": true,
+	#        "shared_comments": true,
+	#        "external_id": "00130000014JoNqAAK",
+	#        "created_at": "2011-10-11T10:05:42Z",
+	#        "updated_at": "2013-11-25T21:29:57Z",
+	#        "domain_names": [
+	#            "datasift.com",
+	#            "mediasift.com"
+	#        ],
+	#        "details": "",
+	#        "notes": "testing",
+	#        "group_id": 20550152,
+	#        "tags": [
+	#            "twitter_rate_approval:not_requested",
+	#            "ao:pier_barattolo"
+	#        ],
+	#        "organization_fields": {
+	#            "account_owner": null,
+	#            "known_usernames": "victor",
+	#            "named_support_engineer": null,
+	#            "subscription_plan": null,
+	#            "twitter_rate_approval": null
+	#        }
+	#    }
+	#}
 
 	# Support Packages
 	elite = config.zenElite
@@ -147,11 +148,12 @@ def UpsertZendeskOrgs(zendesk_conn, zendeskOrgs, sfdcAccounts):
 						account['TAM'].lower(),
 						account['NSE'].lower(),
 						account['Subscription'].lower(),
-						account['TwitterRateApproval'].lower()
+						account['TwitterRateApproval'].lower(),
+						account['AccountStatus'].lower()
 					]
 			tags = [x for x in tags if x] # remove empty strings
 			
-			sfdc = "{0}_{1}_{2}_{3}_{4}".format(account['Name'], account['AccountId'], group, "_".join(sorted(account['DomainMapping'])), "_".join(sorted(tags)))
+			sfdc = "{0}_{1}_{2}_{3}_{4}_{5}".format(account['Name'], account['AccountId'], group, "_".join(sorted(account['DomainMapping'])), "_".join(sorted(tags)), account['KnownUsernames'])
 			data = {
 				"organization": {
 						'name' : account['Name'],
@@ -166,8 +168,11 @@ def UpsertZendeskOrgs(zendesk_conn, zendeskOrgs, sfdcAccounts):
 									account['NSE'],
 									account['Subscription'],
 									account['TwitterRateApproval']
-								]
+								],
+						'organization_fields' : {
+							'known_usernames' : account['KnownUsernames']
 						}
+					}
 			}
 			
 			try:
@@ -202,9 +207,13 @@ def UpsertZendeskOrgs(zendesk_conn, zendeskOrgs, sfdcAccounts):
 									account['TAM'],
 									account['NSE'],
 									account['Subscription'],
-									account['TwitterRateApproval']
-								]
+									account['TwitterRateApproval'],
+									account['AccountStatus']
+								],
+						'organization_fields' : {
+							'known_usernames' : account['KnownUsernames']
 						}
+					}
 			}
 			try:
 				print "Before: " + str(data) # Before
@@ -231,9 +240,13 @@ def UpsertZendeskOrgs(zendesk_conn, zendeskOrgs, sfdcAccounts):
 									account['TAM'],
 									account['NSE'],
 									account['Subscription'],
-									account['TwitterRateApproval']
-								]
+									account['TwitterRateApproval'],
+									account['AccountStatus']
+								],
+						'organization_fields' : {
+							'known_usernames' : account['KnownUsernames']
 						}
+					}
 			}
 			try:
 				result = zendesk_conn.create_organization(data)
@@ -241,8 +254,9 @@ def UpsertZendeskOrgs(zendesk_conn, zendeskOrgs, sfdcAccounts):
 			except Exception, err:
 				logging.exception("Zendesk Create Organization Error: {0} : {1}".format(account['Name'], err))
 				logging.warning("Data: {0}".format(data))
-				
+				print err.msg
 				msg = json.loads(err.msg)
+				print msg
 				
 				if "description" in msg["details"]["name"][0]:
 					if msg["details"]["name"][0]["description"] == "Name has already been taken":
@@ -282,8 +296,11 @@ if __name__ == "__main__":
 
 	##### Extract all SFDC Accounts #####
 	logging.info("Pulling Accounts from Salesforce")
-	sfdcQuery = """SELECT Id, Name, Subscription_Plan__c, Support_Package__c, Zendesk__Domain_Mapping__c, Account_Owner_Name__c, Named_Support_Engineer__c, Technical_Account_Manager__r.Name, Twitter_Rate_Approval__c  
-				FROM Account WHERE LastModifiedDate > {0}""".format(startTime)
+	sfdcQuery = """SELECT Id, Name, Subscription_Plan__c, Support_Package__c, Zendesk__Domain_Mapping__c, 
+						  Account_Owner_Name__c, Named_Support_Engineer__c, Technical_Account_Manager__r.Name, 
+						  Twitter_Rate_Approval__c, Username_s__c, Account_Status__c  
+				   FROM Account 
+				   WHERE LastModifiedDate > {0}""".format(startTime)
 	sfdcResults = sfdc.sfdc_query(sfdcQuery)
 	sfdcAccounts = ProcessSfdcAccounts(sfdcResults['results'])
 
