@@ -49,7 +49,10 @@ def MonthlyDPU(month_num, year, user_name, path):
 	results = QueryMySql(query)
 
 	for row in results:
-		dpu = locale.format("%d", row[0], grouping=True)
+		if row[0] is not None:
+			dpu = locale.format("%d", row[0], grouping=True)
+		else:
+			dpu = '0'
 
 	f = open(path+"/dpu.txt", 'w')
 	f.write(dpu)
