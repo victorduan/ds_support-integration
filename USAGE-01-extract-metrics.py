@@ -196,7 +196,7 @@ def GetUsers():
 	for row in results['results']:
 		user_list = row['Username_s__c'].split(',')
 		for user in user_list:
-			users.append(user)
+			users.append(user.strip())
 
 	return users
 
@@ -240,7 +240,6 @@ if __name__ == "__main__":
 	if not runOnce:
 		# Select all users in the month
 		users = GetUsers()
-		sys.exit()
 		if len(users):
 			for user in users:
 				userPath = workingDir + '/' + user
