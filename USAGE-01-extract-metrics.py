@@ -196,7 +196,7 @@ def GetUsers():
 	for row in results['results']:
 		user_list = row['Username_s__c'].split(',')
 		for user in user_list:
-			users.append(user)
+			users.append(user.strip())
 
 	return users
 
