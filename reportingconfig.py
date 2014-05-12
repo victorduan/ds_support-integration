@@ -15,7 +15,7 @@ dataSourceMapping = {
 	'flickr'		: { 'type' : 'Data Source', 'label' : 'Flickr' },
 	'imdb'			: { 'type' : 'Data Source', 'label' : 'IMDb' },
 	'klout.profile'	: { 'type' : 'Augmentation', 'label' : 'Klout Profile' },
-	'klout.topics'	: { 'type' : 'Augmentation', 'label' : 'Klout Topics' },
+	'klout_topics'	: { 'type' : 'Augmentation', 'label' : 'Klout Topics' },
 	'links'			: { 'type' : 'Augmentation', 'label' : 'Links' },
 	'myspace'		: { 'type' : 'Data Source', 'label' : 'MySpace' },
 	'reddit'		: { 'type' : 'Data Source', 'label' : 'Reddit' },
