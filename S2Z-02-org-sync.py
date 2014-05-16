@@ -12,10 +12,11 @@ Ideally, this should be put in a cron job and run at least hourly
 
 import sys
 import logging
-import config
 import json
 import string
 import time
+import yaml
+import config
 from env import MySqlTask
 from env import SalesforceTask
 from env import ZendeskTask
@@ -24,7 +25,6 @@ if config.logLevel == "info":
 	logging.basicConfig(format='%(asctime)s | %(levelname)s | %(filename)s | %(message)s', level=logging.INFO, filename=config.logFile)
 else:
 	logging.basicConfig(format='%(asctime)s | %(levelname)s | %(filename)s | %(message)s', level=logging.DEBUG, filename=config.logFile)
-
 
 def ProcessSfdcAccounts(results):
 
@@ -127,54 +127,72 @@ def UpsertZendeskOrgs(zendesk_conn, zendeskOrgs, sfdcAccounts):
 	for org in zendeskOrgs:
 		if org['external_id'] is not None:
 			zendeskExtId[org['external_id']] = org['id']
-			zendeskString[org['id']] = "{0}_{1}_{2}_{3}_{4}".format(org['name'].encode('utf-8'), org['external_id'], org['group_id'], "_".join(sorted(org['domain_names'])), "_".join(sorted(org['tags'])))
+			# Handle "None" types
+			known_usernames = org['organization_fields']['known_usernames'] if org['organization_fields']['known_usernames'] is not None else ''
+
+			zendeskString[org['id']] = "{0}_{1}_{2}_{3}_{4}_{5}".format(org['name'].encode('utf-8'), 
+																		org['external_id'], 
+																		org['group_id'], 
+																		"_".join(sorted(org['domain_names'])),
+																		"_".join(sorted(org['tags'])), 
+																		known_usernames)
 			zendeskName[org['name']] = org['id']
 
 	for account in sfdcAccounts:
+		# Assign the correct Support package
+		supportPackage = account['SupportPackage']
 
-		# Find the appropriate Support Group by the Package
-		if account['SupportPackage'] == 'Elite':
-			group = elite
-		elif account['SupportPackage'] == 'Elite VIP':
-			group = eliteVip
-		elif account['SupportPackage'] == 'Premier':
-			group = premier
-		else:
-			group = standard
-		### FIRST, Try ID-based matching ###
-		if account['AccountId'] in zendeskExtId:
-			tags = [ 	
-						account['AccountOwner'].lower(), 
-						account['TAM'].lower(),
-						account['NSE'].lower(),
-						account['Subscription'].lower(),
-						account['TwitterRateApproval'].lower(),
-						account['AccountStatus'].lower()
-					]
-			tags = [x for x in tags if x] # remove empty strings
-			
-			sfdc = "{0}_{1}_{2}_{3}_{4}_{5}".format(account['Name'], account['AccountId'], group, "_".join(sorted(account['DomainMapping'])), "_".join(sorted(tags)), account['KnownUsernames'])
-			data = {
-				"organization": {
-						'name' : account['Name'],
-						'shared_comments' : True,
-						'shared_tickets' : True,
-						'domain_names' : account['DomainMapping'],
-						'external_id' : account['AccountId'],
-						'group_id' : group,
-						'tags' : [
-									account['AccountOwner'], 
-									account['TAM'],
-									account['NSE'],
-									account['Subscription'],
-									account['TwitterRateApproval']
-								],
-						'organization_fields' : {
-							'known_usernames' : account['KnownUsernames']
-						}
-					}
+		packages = {
+			'Elite' 	: elite,
+			'Elite VIP'	: eliteVip,
+			'Premier'	: premier,
+			'Standard'	: standard
+		}
+
+		# Assign the group ID based on the packages dictionary, else set it to standard
+		group = packages.get(supportPackage, standard)
+
+		# Set up all the tags
+		tags = [ 	
+					account['AccountOwner'].lower(), 
+					account['TAM'].lower(),
+					account['NSE'].lower(),
+					account['Subscription'].lower(),
+					account['TwitterRateApproval'].lower(),
+					account['AccountStatus'].lower()
+				]
+		tags = [x for x in tags if x] # remove empty strings
+
+		organization_fields = {
+				'known_usernames' : account['KnownUsernames']
 			}
-			
+
+		# Works around issue with pipe character in name
+		account_name = account['Name'].replace("|","")
+		
+		sfdc = "{0}_{1}_{2}_{3}_{4}_{5}".format(account_name, 
+												account['AccountId'], 
+												group, 
+												"_".join(sorted(account['DomainMapping'])), 
+												"_".join(sorted(tags)), 
+												account['KnownUsernames'])
+		
+		# Finalize the data payload
+		data = {
+			"organization": {
+					'name' : account_name,
+					'shared_comments' : True,
+					'shared_tickets' : True,
+					'domain_names' : account['DomainMapping'],
+					'external_id' : account['AccountId'],
+					'group_id' : group,
+					'tags' : tags,
+					'organization_fields' : organization_fields
+				}
+		}	
+
+		### FIRST, Try ID-based matching ###
+		if account['AccountId'] in zendeskExtId:	
 			try:
 				#print "Before: " + str(data) # Before
 				if sfdc != zendeskString[zendeskExtId[account['AccountId']]]:
@@ -192,29 +210,9 @@ def UpsertZendeskOrgs(zendesk_conn, zendeskOrgs, sfdcAccounts):
 				logging.exception("Zendesk Update Organization Error for ID {0} : {1}".format(zendeskExtId[account['AccountId']], err))
 				logging.warning("Data: {0}".format(data))
 				errorCount+=1
+
 		### SECOND - Try to match by organization name ###
 		elif account['Name'] in zendeskName:
-			data = {
-				"organization": {
-						'name' : account['Name'],
-						'shared_comments' : True,
-						'shared_tickets' : True,
-						'domain_names' : account['DomainMapping'],
-						'external_id' : account['AccountId'],
-						'group_id' : group,
-						'tags' : [
-									account['AccountOwner'], 
-									account['TAM'],
-									account['NSE'],
-									account['Subscription'],
-									account['TwitterRateApproval'],
-									account['AccountStatus']
-								],
-						'organization_fields' : {
-							'known_usernames' : account['KnownUsernames']
-						}
-					}
-			}
 			try:
 				print "Before: " + str(data) # Before
 				orgId = zendeskName[account['Name']]
@@ -227,29 +225,10 @@ def UpsertZendeskOrgs(zendesk_conn, zendeskOrgs, sfdcAccounts):
 				errorCount+=1
 		### THIRD - Try to create the organization in Zendesk ###
 		else:
-			data = {
-				"organization": {
-						'name' : account['Name'],
-						'shared_comments' : True,
-						'shared_tickets' : True,
-						'domain_names' : account['DomainMapping'],
-						'external_id' : account['AccountId'],
-						'group_id' : group,
-						'tags' : [
-									account['AccountOwner'], 
-									account['TAM'],
-									account['NSE'],
-									account['Subscription'],
-									account['TwitterRateApproval'],
-									account['AccountStatus']
-								],
-						'organization_fields' : {
-							'known_usernames' : account['KnownUsernames']
-						}
-					}
-			}
 			try:
+				logging.info("Trying to create organization: {0}".format(data))
 				result = zendesk_conn.create_organization(data)
+				logging.debug("Create output: {0}".format(result))
 				apiCalls+=1
 			except Exception, err:
 				logging.exception("Zendesk Create Organization Error: {0} : {1}".format(account['Name'], err))
@@ -266,6 +245,9 @@ def UpsertZendeskOrgs(zendesk_conn, zendeskOrgs, sfdcAccounts):
 
 				errorCount += 1
 
+	if len(possibleDuplicates):
+		print possibleDuplicates
+		
 	logging.info("Total Zendesk Update calls used: {0}".format(apiCalls))
 
 	return errorCount
@@ -282,7 +264,6 @@ if __name__ == "__main__":
 	zd = ZendeskTask(config.zenURL, config.zenAgent, config.zenPass, config.zenToken)
 
 	### Pull SFDC Account Info to Zendesk Organizations ###
-
 	try:
 		sfdcLastModified = sfdc.sfdc_timestamp()
 		logging.info("Current Salesforce Timestamp: {0}".format(sfdcLastModified))
@@ -304,11 +285,6 @@ if __name__ == "__main__":
 	sfdcResults = sfdc.sfdc_query(sfdcQuery)
 	sfdcAccounts = ProcessSfdcAccounts(sfdcResults['results'])
 
-	"""
-	Pusedo-code
-
-	
-	"""
 
 	# If there are no SFDC Account modified since the last run, update the internal 
 	# timestamp and exit.
@@ -330,6 +306,7 @@ if __name__ == "__main__":
 		logging.exception(err)
 
 	##### Update Zendesk Orgs #####
+	# errCount will determine if errors were encountered
 	errCount = UpsertZendeskOrgs(zd, zendeskOrgs, sfdcAccounts)
 
 	##### Update Zendesk Organization Custom Fields #####

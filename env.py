@@ -335,3 +335,38 @@ class ZendeskTask(object):
 				runLoop = False
 				
 		return { 'end_time' : start_time, 'results' : tickets }
+
+class DataSiftCalls(object):
+
+	_username 	= ""
+	_api_key	= ""
+	_api_verion = ""
+	_base_url	= ""
+
+	# Classes to make calls to DataSift's REST API using Requests; independent of the client library
+	def __init__(self, username, api_key, api_version="1", base_url='https://api.datasift.com'):
+		self._username 		= username
+		self._api_key 		= api_key
+		self._api_verion 	= api_version
+		self._base_url		= base_url
+
+	def list_historics(self, page=1, per_page=20):
+		url 	= self._base_url + "/v" + self._api_verion + "/historics/get"
+		auth 	= (self._username, self._api_key)
+		params 	= {
+			"page" 		: page,
+			"per_page" 	: per_page
+		}
+
+		r = requests.get(url, auth=auth, params=params)
+
+		return { 'headers' : r.headers, 'output' : r.json() }
+
+	def get_stream_dpu(self, stream_hash):
+		url 	= self._base_url + "/dpu"
+		auth 	= (self._username, self._api_key)
+		params 	= { "hash" : stream_hash }
+
+		r = requests.get(url, auth=auth, params=params)
+
+		return { 'headers' : r.headers, 'output' : r.json() } 
