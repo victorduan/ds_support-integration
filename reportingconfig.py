@@ -30,7 +30,7 @@ dataSourceMapping = {
 	'salience.topics'	: { 'type' : 'Augmentation', 'label' : 'Salience Topics' },
 	'sentiment.topics'	: { 'type' : 'Augmentation', 'label' : 'Sentiment Topics' },
 	'sinaweibo_perinteraction' : { 'type' : 'Augmentation', 'label' : 'Sina Weibo' },
-	'tancentweibo_perinteraction' : { 'type' : 'Augmentation', 'label' : 'Tancent Weibo' },
+	'tencentweibo_perinteraction' : { 'type' : 'Augmentation', 'label' : 'Tencent Weibo' },
 	'topix'			: { 'type' : 'Data Source', 'label' : 'Topix' },
 	'trends'		: { 'type' : 'Augmentation', 'label' : 'Trends' },
 	'tumblr'		: { 'type' : 'Data Source', 'label' : 'Tumblr' },
