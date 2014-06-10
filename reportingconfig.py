@@ -34,9 +34,11 @@ dataSourceMapping = {
 	'topix'			: { 'type' : 'Data Source', 'label' : 'Topix' },
 	'trends'		: { 'type' : 'Augmentation', 'label' : 'Trends' },
 	'tumblr'		: { 'type' : 'Data Source', 'label' : 'Tumblr' },
+	'twitter_geo'		: { 'type' : 'Data Source', 'label' : 'Twitter Geo' },
 	'video'			: { 'type' : 'Data Source', 'label' : 'Video' },
 	'wordpress.blog'	: { 'type' : 'Data Source', 'label' : 'Wordpress Blog' },
 	'wordpress.comment'	: { 'type' : 'Data Source', 'label' : 'Wordpress Comment' },
+	'wordpress_perinteraction' : { 'type' : 'Data Source', 'label' : 'Wordpress' },
 	'youtube'		: { 'type' : 'Data Source', 'label' : 'YouTube' },
 }
 
