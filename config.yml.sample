@@ -1,0 +1,22 @@
+### Zendesk ###
+zenURL: https://<url>.zendesk.com
+zenAgent: agent@email.com
+zenPass: token
+zenToken: True
+
+# Zendesk Groups
+zenElite: 20563167
+zenVip: 20656662
+zenPremier: 20551153
+zenStandard: 20550152
+
+### Salesforce ###
+sfUser: login@user.com
+sfPass: password
+sfApiToken: token
+
+### MySQL ###
+mysql_username: user
+mysql_database: database
+mysql_host: hostname
+mysql_password: password
