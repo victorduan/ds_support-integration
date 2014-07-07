@@ -10,21 +10,46 @@ Ideally, this should be put in a cron job and run at least hourly
 
 """
 
-import sys
-import logging
+import sys, os
+import logging.config
 import json
 import string
 import time
 import yaml
-import config
 from env import MySqlTask
 from env import SalesforceTask
 from env import ZendeskTask
 
-if config.logLevel == "info":
-	logging.basicConfig(format='%(asctime)s | %(levelname)s | %(filename)s | %(message)s', level=logging.INFO, filename=config.logFile)
-else:
-	logging.basicConfig(format='%(asctime)s | %(levelname)s | %(filename)s | %(message)s', level=logging.DEBUG, filename=config.logFile)
+def usage(message = '', exit = True):
+	"""
+	Display usage information, with an error message if provided.
+	"""
+	if len(message) > 0:
+		sys.stderr.write('\n%s\n' % message)
+		sys.stderr.write('\n');
+		sys.stderr.write('Usage: python S2Z-02-org-sync.py <config_file> \\\n')
+		sys.stderr.write('\n')
+		sys.stderr.write('Example\n')
+		sys.stderr.write('       python S2Z-02-org-sync.py main_config.yml \\\n')
+		sys.stderr.write('\n')
+		sys.stderr.write('\n')
+	if exit:
+		sys.exit(1)
+
+def setup_logging(
+    default_path='logging.yml', 
+    default_level=logging.INFO
+):
+    """Setup logging configuration
+
+    """
+    path = default_path
+    if os.path.exists(path):
+        with open(path, 'rt') as f:
+            config = yaml.load(f.read())
+        logging.config.dictConfig(config)
+    else:
+        logging.basicConfig(level=default_level)
 
 def ProcessSfdcAccounts(results):
 
@@ -55,12 +80,15 @@ def ProcessSfdcAccounts(results):
 		except:
 			tam = ''
 
-		ao = "ao:" + record['Account_Owner_Name__c'].replace(" ", "_").strip() if record['Account_Owner_Name__c'] != '' else ''
-		nse = "nse:" + record['Named_Support_Engineer__c'].replace(" ", "_").strip() if record['Named_Support_Engineer__c'] != '' else ''
-		domains = string.split(record['Zendesk__Domain_Mapping__c']) if record['Zendesk__Domain_Mapping__c'] != '' else []
-		twitter = "twitter_rate_approval:" + record['Twitter_Rate_Approval__c'].replace(" ", "_").strip() if record['Twitter_Rate_Approval__c'] != '' else ''
-		account_status = "account_status:" + record['Account_Status__c'].replace(" ", "_").strip() if record['Account_Status__c'] != '' else ""
+		ao 				= "ao:" + record['Account_Owner_Name__c'].replace(" ", "_").strip() if record['Account_Owner_Name__c'] != '' else ''
+		nse 			= "nse:" + record['Named_Support_Engineer__c'].replace(" ", "_").strip() if record['Named_Support_Engineer__c'] != '' else ''
+		domains 		= string.split(record['Zendesk__Domain_Mapping__c']) if record['Zendesk__Domain_Mapping__c'] != '' else []
+		twitter 		= "twitter_rate_approval:" + record['Twitter_Rate_Approval__c'].replace(" ", "_").strip() if record['Twitter_Rate_Approval__c'] != '' else ''
+		account_status 	= "account_status:" + record['Account_Status__c'].replace(" ", "_").strip() if record['Account_Status__c'] != '' else ""
 		known_usernames = record['Username_s__c']
+		mrr 			= "mrr:" + str(int(record['Contracted_MRR__c'])) if record['Contracted_MRR__c'] > 0 else ''
+		smb_enterprise	= "type:" + record['SMB_Enterprise__c'] if record['SMB_Enterprise__c'] != '' else ''
+
 
 		processedResults.append(
 			{
@@ -74,7 +102,9 @@ def ProcessSfdcAccounts(results):
 				'AccountOwner' 			: ao,
 				'TwitterRateApproval' 	: twitter,
 				'AccountStatus'			: account_status,
-				'KnownUsernames'		: known_usernames
+				'KnownUsernames'		: known_usernames,
+				'MRR'					: mrr,
+				'SMBEnterprise'			: smb_enterprise
 			}
 		)
 	return processedResults
@@ -112,10 +142,10 @@ def UpsertZendeskOrgs(zendesk_conn, zendeskOrgs, sfdcAccounts):
 	#}
 
 	# Support Packages
-	elite = config.zenElite
-	eliteVip = config.zenVip
-	premier = config.zenPremier
-	standard = config.zenStandard
+	elite = config['zenElite']
+	eliteVip = config['zenVip']
+	premier = config['zenPremier']
+	standard = config['zenStandard']
 
 	zendeskName = {} # Name-based key
 	zendeskExtId = {} # SFDC-based key
@@ -159,7 +189,9 @@ def UpsertZendeskOrgs(zendesk_conn, zendeskOrgs, sfdcAccounts):
 					account['NSE'].lower(),
 					account['Subscription'].lower(),
 					account['TwitterRateApproval'].lower(),
-					account['AccountStatus'].lower()
+					account['AccountStatus'].lower(),
+					account['MRR'].lower(),
+					account['SMBEnterprise'].lower()
 				]
 		tags = [x for x in tags if x] # remove empty strings
 
@@ -254,14 +286,35 @@ def UpsertZendeskOrgs(zendesk_conn, zendeskOrgs, sfdcAccounts):
 
 
 if __name__ == "__main__":
+	if len(sys.argv) < 2:
+		sys.stderr.write('Please specify the correct number of command line arguments! Need a config file\n')
+		usage()
+
+	# Set up logging
+	setup_logging()
+
+	# Load config files
+	try:
+		filename = sys.argv[1]
+		logging.info("Trying to open configuration file {0}.".format(filename))
+		f = open(filename)
+		config = yaml.safe_load(f)
+
+		logging.info("Sucessfully opened configuration file.")
+
+		f.close()
+	except Exception, err:
+		logging.exception(err)
+		sys.exit(1)
+
 	# Create object for internal database methods (mySQL)
-	mysqlDb = MySqlTask(config.mysql_username, config.mysql_password, config.mysql_host, config.mysql_database)
+	mysqlDb = MySqlTask(config['mysql_username'], config['mysql_password'], config['mysql_host'], config['mysql_database'])
 
 	# Create object for Salesforce methods
-	sfdc = SalesforceTask(config.sfUser, config.sfPass, config.sfApiToken)
+	sfdc = SalesforceTask(config['sfUser'], config['sfPass'], config['sfApiToken'])
 
 	# Create object for Zendesk methods
-	zd = ZendeskTask(config.zenURL, config.zenAgent, config.zenPass, config.zenToken)
+	zd = ZendeskTask(config['zenURL'], config['zenAgent'], config['zenPass'], config['zenToken'])
 
 	### Pull SFDC Account Info to Zendesk Organizations ###
 	try:
@@ -279,7 +332,8 @@ if __name__ == "__main__":
 	logging.info("Pulling Accounts from Salesforce")
 	sfdcQuery = """SELECT Id, Name, Subscription_Plan__c, Support_Package__c, Zendesk__Domain_Mapping__c, 
 						  Account_Owner_Name__c, Named_Support_Engineer__c, Technical_Account_Manager__r.Name, 
-						  Twitter_Rate_Approval__c, Username_s__c, Account_Status__c  
+						  Twitter_Rate_Approval__c, Username_s__c, Account_Status__c, SMB_Enterprise__c,
+						  Contracted_MRR__c  
 				   FROM Account 
 				   WHERE LastModifiedDate > {0}""".format(startTime)
 	sfdcResults = sfdc.sfdc_query(sfdcQuery)
