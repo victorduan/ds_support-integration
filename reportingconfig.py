@@ -29,6 +29,7 @@ dataSourceMapping = {
 	'video'			: { 'type' : 'Data Source', 'label' : 'Video' },
 	'wordpress.blog'	: { 'type' : 'Data Source', 'label' : 'Wordpress Blog' },
 	'wordpress.comment'	: { 'type' : 'Data Source', 'label' : 'Wordpress Comment' },
+	'wordpress_promo' : { 'type' : 'Data Source', 'label' : 'Wordpress' },
 	'youtube'		: { 'type' : 'Data Source', 'label' : 'YouTube' },
 }
 
